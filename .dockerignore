@@ -1,0 +1,9 @@
+node_modules
+web
+metrics
+data
+*.db
+.env
+.git
+.github
+dist
