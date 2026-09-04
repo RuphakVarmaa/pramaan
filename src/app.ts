@@ -5,7 +5,7 @@
 // clock reads inside gate/artifact/ledger logic. Money crosses the JSON
 // boundary ONLY as strings.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
@@ -208,8 +208,33 @@ export function buildApp(deps: AppDeps): FastifyInstance {
       type: 'DELEGATION_ISSUED',
       artifactId: issued.artifact.artifactId,
       verdict: 'ALLOW',
-      reason: null,
+      reason: JSON.stringify({
+        scope: {
+          categories: issued.artifact.scope.categories,
+          maxPerTxnPaise: issued.artifact.scope.maxPerTxnPaise.toString(),
+          maxAggregatePaise: issued.artifact.scope.maxAggregatePaise.toString(),
+          expiresAt: issued.artifact.scope.expiresAt,
+        },
+        issuedAt: issued.artifact.issuedAt,
+      }),
     });
+    // artifacts sidecar (data/artifacts.json) — the authoritative Exhibit A
+    // source for the evidence generator (CONTRACTS.md §5.1 pattern).
+    try {
+      const artifactsPath = join(deps.dataDir ?? 'data', 'artifacts.json');
+      mkdirSync(dirname(artifactsPath), { recursive: true });
+      const existing = existsSync(artifactsPath)
+        ? (JSON.parse(readFileSync(artifactsPath, 'utf8')) as Record<string, unknown>)
+        : {};
+      existing[issued.artifact.artifactId] = {
+        artifact: artifactToWire(issued.artifact),
+        sig: issued.sig,
+      };
+      writeFileSync(artifactsPath, JSON.stringify(existing, null, 2) + '\n');
+    } catch {
+      // sidecar is best-effort; the ledger row above still carries the
+      // structured reason fallback the evidence generator understands.
+    }
     return reply.code(201).send({
       artifactId: issued.artifact.artifactId,
       artifact: artifactToWire(issued.artifact),

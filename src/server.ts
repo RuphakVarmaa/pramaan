@@ -6,7 +6,7 @@
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash, createPrivateKey, createPublicKey, createSign as nodeCreateSign, KeyObject, randomBytes } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto';
 import { buildApp } from './app.js';
 import { createRazorpayClient, getMode, newDisputeId } from './razorpay.js';
 import { openLedger } from './ledger.js';
@@ -66,8 +66,6 @@ function makeSigner(seed: string | undefined): Signer {
     .toString('base64');
   const privateKeyB64 = pkcs8.toString('base64');
   void privateKeyB64; // kept for future export needs; Signer only needs publicKey
-  const signer = nodeCreateSign(null as unknown as string);
-  void signer; // KeyObject handles signing; this line keeps the import honest
   return { publicKey: publicKeyB64, privateKey: pkcs8.toString('base64'), _keyObject: privateKeyObj } as unknown as Signer;
 }
 
@@ -85,6 +83,8 @@ async function main(): Promise<void> {
 
   const app = buildApp({
     env,
+    db,
+    dataDir: dirname(dbPath),
     razorpay: createRazorpayClient({ env }),
     ledger: {
       append: (event) => {
@@ -132,10 +132,8 @@ async function main(): Promise<void> {
     publicKey: signer.publicKey,
     issueDelegation: (input) => issueDelegation(input, signer),
     verifyArtifact: (wire, sig, now) => verifyArtifact(wire, sig, signer.publicKey, now),
-    fraudGate: undefined as never, // replaced below via a bound import
-    fastify: () => {
-      throw new Error('server builds its own fastify instance via buildApp');
-    },
+    fraudGate: pramaanFraudGate,
+    fastify: () => Fastify({ logger: false }),
   });
 
   await app.listen({ port, host: '0.0.0.0' });

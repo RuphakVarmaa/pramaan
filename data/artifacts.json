@@ -1,0 +1,148 @@
+{
+  "dl_021755f5d9138315abd28458": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_021755f5d9138315abd28458",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.555Z",
+      "nonce": "4f01cfdb23b8adbfd4536a87e827db98"
+    },
+    "sig": "GG8+by0EStY+ZrhkWUykAPzXmZDhMk5R9DfREHDZzKnfsSq/GhsSehTUuX35Lhe2tq5JYrQOAsAggcvE1sL8Bg=="
+  },
+  "dl_92e29d811c8d8a453ba1101b": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_92e29d811c8d8a453ba1101b",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.560Z",
+      "nonce": "226a523e8e5a5c24e10d5878044315d1"
+    },
+    "sig": "jNAHgGUMh01smjIjUd32pRG56+kyzKGFyGQyVcWa8RiAXIIKHrpArowIFYQD5d15PS6p0xpwpIryXgyqWxn9Aw=="
+  },
+  "dl_e7d25fd5d072c4368af4d896": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_e7d25fd5d072c4368af4d896",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.564Z",
+      "nonce": "70781753685e0a1f183f0b50c15df1c9"
+    },
+    "sig": "juXAq2GvhrJed0lQMAb907sScr4ASt+elUVmDxZAufWbCPixprdQyr7juoi7iJNqIVnKcG7xwRNKSlTWY1SUDg=="
+  },
+  "dl_347786a5a3a0829fdd8d561c": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_347786a5a3a0829fdd8d561c",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.566Z",
+      "nonce": "0c2271d76a763500e9db312cd893d9f7"
+    },
+    "sig": "q1QRQQj3Oq+zhtt8VV/fmtDbPiIC1GI1oSbI3UEfIk2avI8O8wD7wono2M6VR0oK4Mlhr32l7e06xkGdmaE1AA=="
+  },
+  "dl_d2ca9556ea5c0b1159cd4b12": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_d2ca9556ea5c0b1159cd4b12",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "50000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.571Z",
+      "nonce": "d3c508d6d9e1dfee1ab73431ff359940"
+    },
+    "sig": "JvO7YSzvx/u0xN1+dTIqcs5tQLce246xZsDTNO5KmA9P0JymwDRaF92tf3gcilVqMGj7+8ynbWPo3swxLbeyBA=="
+  },
+  "dl_765e8c227e501ba465f81896": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_765e8c227e501ba465f81896",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.573Z",
+      "nonce": "cf82080f3614265cdc551073c379d3e0"
+    },
+    "sig": "KbAYm1FIxt+BbMeuSHCszRifbMDg4E0Weo1Ivo04/6VLpYX7mQGPoku1WU/S8e747XggGEJjkLTRKuju01GJCg=="
+  },
+  "dl_7d0039c6249ac00d4056ff5c": {
+    "artifact": {
+      "version": 1,
+      "artifactId": "dl_7d0039c6249ac00d4056ff5c",
+      "merchantId": "kadai-and-co",
+      "agentId": "agent-007",
+      "principal": "human:rupa@upi",
+      "scope": {
+        "categories": [
+          "coffee",
+          "equipment"
+        ],
+        "maxPerTxnPaise": "500000",
+        "maxAggregatePaise": "2000000",
+        "expiresAt": "2099-01-01T00:00:00.000Z"
+      },
+      "issuedAt": "2026-09-04T17:17:55.577Z",
+      "nonce": "f5af35b4d1f307b2b84ffef802d5a6d3"
+    },
+    "sig": "/tYWlOuWm1pfhaAoh2nhlzT3fpZtLgVGR6oK1JYIFTVN81oJeZvU+fiEGcZBf044lxy5Zb++bz9t2+E5U1FqCA=="
+  }
+}
