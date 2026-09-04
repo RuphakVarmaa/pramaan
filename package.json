@@ -1,0 +1,25 @@
+{
+  "name": "pramaan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pramaan — Proof-of-Delegation & Dispute-Evidence Layer for AI-agent payments on Razorpay (test mode). Razorpay AI Buildathon 2026, Track 01.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node dist/scripts/smoke.js",
+    "batch": "node dist/scripts/run-batch.js",
+    "demo": "node dist/scripts/demo.js",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
