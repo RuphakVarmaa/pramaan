@@ -232,7 +232,7 @@ export function renderEvidencePack(data: EvidencePackData): string {
   const exhibitB = `
   <section class="exhibit">
     <h3><span class="ex-label">Exhibit B</span> &mdash; What the agent attempted</h3>
-    <p class="ex-lede">Every ledger line recorded for this delegation, in sequence order, including refused attempts. Each line is anchored in the append-only hash chain (Exhibit E verifies it).</p>
+    <p class="ex-lede">Every attempt line recorded for this delegation, in sequence order &mdash; allowed and refused alike, reasons included. Each line is anchored in the append-only hash chain (Exhibit E verifies it).</p>
     <table class="doc-table wide">
       <thead>
         <tr><th>#</th><th>Timestamp</th><th>Type</th><th>Amount</th><th>Verdict</th><th>Reason</th><th>Order</th><th>Row&nbsp;hash</th></tr>
