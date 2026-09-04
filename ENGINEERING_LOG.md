@@ -40,19 +40,30 @@ The failure signature was confusing at first glance: a clean tree, a passing sca
 
 **Lesson recorded:** a scanner that searches for forbidden literals must never carry those literals contiguously in its own source. Same class of bug as a profanity filter that won't run in the directory it protects. Caught because the heartbeat logs its refusals loudly rather than silently skipping — which is the behavior we want everywhere in this system.
 
+### 22:05 — Incident: the heartbeat guard flagged the engineering log
+
+Second false positive, different mechanism. The doc mention of the first incident (`rzp_live_...` inside backticks, in this very file) matched the bare live-marker scan. A documentation mention is not a secret; a bare `rzp_live` grep cannot distinguish prose from a key.
+
+**Fix:** the guard now matches live-key *formats* (`rzp_live_` + 14+ alphanumerics) rather than the bare marker, and exact-value matching against real `.env` values remains the primary defense. Real keys are still caught by both; prose now passes. The deeper lesson is the same as the first incident's, one level up: the guard's model of "what a secret looks like" must be tight enough that honest text never trips it — otherwise people learn to ignore the alarm, and the alarm is the whole point.
+
+### 22:15 — Incident: S2 (RAILS) died mid-flight; the integration gap
+
+The RAILS swarm stopped partway through `src/app.ts` and `test/routes.test.ts`. What it left was structurally sound — a ports-and-adapters `buildApp(deps)` with the business logic still pure — but unfinished: seven type errors, a `server.ts` that never wired the real modules (it called helper names that don't exist: `createLedger`, `createSigner`, `loadCatalog`), and a route test written against an API it had invented rather than the frozen contracts (it even passed paise as JS numbers, violating the money invariant).
+
+The confusing part: the test failures looked like *gate* bugs (`CAP_EXCEEDED_AGGREGATE` not firing) when they were actually *fixture* bugs — one test used `90_00n` (₹90) where the comment said ₹900, another had an arithmetic typo in an expected bigint. Reproducing the exact scenario with a contract-shaped fixture proved the gate correct in two minutes; the tests were wrong, not the code.
+
+**Fix:** took ownership of S2's remains per the swarm protocol, reconciled everything to CONTRACTS.md — rewired `server.ts` to the real ledger/artifact/gate exports, aligned the test to the real `AppDeps` shape and field names (`artifactWire`, string paise), and added the missing `PAYMENT_CAPTURED` emission (honestly labeled with payment mode; a production build lands that row from the `payment.captured` webhook instead — documented in README's limitations). Also fixed two real server bugs found only by running it: a leftover `createSign(null)` crash in the signer, and `require()` calls inside an ESM module.
+
+**Lesson recorded:** when a parallel swarm dies, its *tests* are the most dangerous artifact it leaves — they encode its intentions, not the contracts, and they fail in ways that misattribute blame to working code. Verify the fixture before suspecting the module. The live end-to-end run (all six demo moments over HTTP, curl against a booted server) is the only proof that actually closes the loop; unit tests alone had left the server unbootable twice.
+
+### 22:47 — Evidence wired; the six demo moments green over live HTTP
+
+`GET /evidence/:delegationId` now renders S3's forensic dossier for real: ledger span, dispute metadata, Exhibits A–E, computed scope-vs-actual verdict, chain-of-integrity proof, sealed footer. Issuance also writes the `data/artifacts.json` sidecar (Exhibit A's authoritative source), with the structured-reason fallback in the `DELEGATION_ISSUED` ledger row for when the sidecar is absent. The full curl-verified sequence: issue → in-scope order → cap-exceeded documented refusal → dispute → evidence pack → flagged-legit RELEASE (`PRAMAAN_DELEGATION_PROOF`) → flagged-malicious BLOCK (`NO_VALID_DELEGATION`), with the ledger showing every money action leaving a row (and `EVIDENCE_GENERATED` recording the pack's sha256).
+
 <!--
 
-The sections below are the Orchestrator's to fill as the night proceeds.
-Keep the voice: what happened, what was confusing, what fixed it, what it cost.
-
-### (TBD-1) — Incident slot: reserved for the next real incident
-_Orchestrator: date, time, what happened, what was confusing, the fix, the lesson._
-
-### (TBD-2) — Incident slot: reserved
-_Orchestrator: as above._
-
-### (TBD-3) — Incident slot: reserved
-_Orchestrator: as above._
+The sections below were reserved for real incidents; see the filled entries
+above (22:05, 22:15, 22:47). Further entries appended as they happen.
 
 -->
 
