@@ -9,3 +9,4 @@ metrics/generated/
 *.log
 .DS_Store
 data/
+.vercel

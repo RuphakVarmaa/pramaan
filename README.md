@@ -60,6 +60,19 @@ Pramaan (प्रमाण — proof/authority) is an open, verifiable proof-of
 
 Every money action — issuance, attempt, block, capture, release, dispute — appends one line to the hash-chained ledger. The ledger is the spine all three layers stand on.
 
+**Live demo:** <https://pramaan-alpha.vercel.app> — the full arc over HTTP, right now:
+
+```bash
+curl https://pramaan-alpha.vercel.app/health
+# {"ok":true,"service":"pramaan","ts":"…","paymentsMode":"stub"}
+
+curl -X POST https://pramaan-alpha.vercel.app/delegations \
+  -H 'content-type: application/json' \
+  -d '{"merchantId":"kadai-and-co","agentId":"agent-007","principal":"human:rupa@upi","scope":{"categories":["coffee"],"maxPerTxnPaise":"500000","maxAggregatePaise":"1500000","expiresAt":"2099-01-01T00:00:00Z"}}'
+```
+
+Issue a delegation, then try an in-scope checkout, a cap-exceeded refusal, a dispute, the evidence pack, and both fraud verdicts — every endpoint from JUDGE.md, live. (Serverless demo mode: per-warm-container in-memory ledger; each cold start begins a fresh chain. The persistent-ledger deployment is the Dockerfile.)
+
 ---
 
 ## Quickstart
