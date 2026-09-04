@@ -41,4 +41,13 @@ jobs:
       - name: Batch metrics (stub mode — no Razorpay keys, no secrets)
         env:
           PRAMAAN_STUB_PAYMENTS: "1"
-        run: npm run batch
+        # The batch is load-bearing ("measured on held-out data"), so once the
+        # runner exists it MUST pass (no continue-on-error). Until swarm S5
+        # lands scripts/run-batch.ts, the step detects its absence and fails
+        # with an explicit, actionable message rather than a MODULE_NOT_FOUND.
+        run: |
+          if [ ! -f dist/scripts/run-batch.js ]; then
+            echo "::error::Batch runner not built yet — scripts/run-batch.ts (swarm S5) has not landed. CI will enforce the batch once it exists."
+            exit 1
+          fi
+          npm run batch
