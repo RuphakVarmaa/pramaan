@@ -16,7 +16,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import Fastify from 'fastify';
 
@@ -42,7 +42,6 @@ function ok(name: string, cond: boolean, detail?: string): void {
   }
 }
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 async function main(): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), 'pramaan-smoke-'));
@@ -50,13 +49,18 @@ async function main(): Promise<void> {
   const dataDir = join(dir, 'data');
   const db = openLedger(dbPath);
 
-  // Deterministic signer (same derivation as run-batch: sha256(seed:agent)).
+  // Deterministic signer — public key DERIVED from the seed (not the seed)
   const raw = createHash('sha256').update('pramaan-smoke-signer', 'utf8').digest();
-  const pkcs8Prefix = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
-  const spkiPrefix = new Uint8Array([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
+  const pkcs8 = Buffer.concat(
+    [new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]), raw],
+  );
   const signer: Signer = {
-    privateKey: Buffer.concat([pkcs8Prefix, raw]).toString('base64'),
-    publicKey: Buffer.concat([spkiPrefix, raw]).toString('base64'),
+    privateKey: pkcs8.toString('base64'),
+    publicKey: createPublicKey(
+      createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' }),
+    )
+      .export({ type: 'spki', format: 'der' })
+      .toString('base64'),
   };
 
   const env = { PRAMAAN_STUB_PAYMENTS: '1', PRAMAAN_DB: dbPath };

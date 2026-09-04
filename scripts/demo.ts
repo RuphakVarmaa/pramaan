@@ -19,7 +19,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 
 import { generateEd25519KeyPair, sign as cryptoSign } from '../src/crypto.js';
 import { issueDelegation, verifyArtifact, type Signer } from '../src/artifact.js';
@@ -107,14 +107,18 @@ function wire(artifact: ReturnType<typeof issueDelegation>['artifact']): Delegat
   };
 }
 
-// deterministic demo signer (same DER-wrap derivation as run-batch)
+// deterministic demo signer — public key DERIVED from the seed (not the seed)
 function demoSigner(): Signer {
   const raw = createHash('sha256').update('pramaan-demo-signer', 'utf8').digest();
-  const pkcs8Prefix = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
-  const spkiPrefix = new Uint8Array([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
+  const pkcs8 = Buffer.concat(
+    [new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]), raw],
+  );
+  const pubKey = createPublicKey(
+    createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' }),
+  );
   return {
-    privateKey: Buffer.concat([pkcs8Prefix, raw]).toString('base64'),
-    publicKey: Buffer.concat([spkiPrefix, raw]).toString('base64'),
+    privateKey: pkcs8.toString('base64'),
+    publicKey: pubKey.export({ type: 'spki', format: 'der' }).toString('base64'),
   };
 }
 

@@ -19,7 +19,7 @@
 //
 // Money: bigint paise in-process, strings at the JSON boundary (§8.3).
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -59,9 +59,23 @@ export interface Catalog {
   products: CatalogProduct[];
 }
 
+/** Repo root, robust to running from dist/scripts (tsconfig copies nothing,
+ *  but build output lives in dist/ — walk up until package.json + catalog.json). */
+export function repoRoot(): string {
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'catalog.json'))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error('repoRoot: could not locate the pramaan repo root (package.json + catalog.json)');
+}
+
 export function loadCatalog(from?: string): Catalog {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const path = from ?? join(here, '..', 'catalog.json');
+  const path = from ?? join(repoRoot(), 'catalog.json');
   const raw: {
     merchant: { id: string; categories: string[] };
     products: { sku: string; name: string; category: string; unitPaise: number }[];
@@ -153,7 +167,6 @@ export interface FlaggedScenario {
 
 export interface BatchCorpus {
   seed: number;
-  generatedAt: string;
   catalog: Catalog;
   inScope: PurchaseScenario[];
   outOfScope: PurchaseScenario[];
@@ -285,9 +298,9 @@ function genOutOfScope(
 
     let maxPerTxnPaise = total * 2n;
     let maxAggregatePaise = total * 4n;
-    let expiresAt = futureExpiry(rng);
+    let expiresInDays = 30 + Math.floor(rng() * 336);
+    let evaluatedInDays = 0;
     let cartMerchant = catalog.merchantId;
-    // (scopeCategories stays = categories; CATEGORY violations come via lines)
 
     switch (planted) {
       case 'CATEGORY_OUT_OF_SCOPE': {
@@ -305,7 +318,11 @@ function genOutOfScope(
         maxAggregatePaise = total - 1n; // any spend breaks the lifetime cap
         break;
       case 'ARTIFACT_EXPIRED':
-        expiresAt = pastExpiry(rng);
+        // issueDelegation cannot mint an already-expired artifact (by
+        // design), so the corpus plants a SHORT window and evaluates the
+        // gate after it lapses: valid at mint, expired at purchase.
+        expiresInDays = 1 + Math.floor(rng() * 3); // 1..3 days
+        evaluatedInDays = expiresInDays + 1 + Math.floor(rng() * 30); // strictly after
         break;
       case 'MERCHANT_MISMATCH':
         cartMerchant = 'somebody-else-commerce';
@@ -321,8 +338,9 @@ function genOutOfScope(
         categories,
         maxPerTxnPaise,
         maxAggregatePaise,
-        expiresAt,
+        expiresInDays,
       },
+      evaluatedInDays,
       cart: { merchantId: cartMerchant, lines },
       plantedViolation: planted,
     });
@@ -370,8 +388,9 @@ function genDisputed(
         categories,
         maxPerTxnPaise: total * 2n,
         maxAggregatePaise: total * 4n,
-        expiresAt: futureExpiry(rng),
+        expiresInDays: 30 + Math.floor(rng() * 336),
       },
+      evaluatedInDays: 0,
       cart: { merchantId: catalog.merchantId, lines },
       disputeReason: DISPUTE_REASONS[(i - 1) % DISPUTE_REASONS.length] as string,
       disputeAmountPaise: total,
@@ -424,8 +443,9 @@ function genFlagged(
         categories,
         maxPerTxnPaise: amount * 2n,
         maxAggregatePaise: amount * 4n,
-        expiresAt: futureExpiry(rng),
+        expiresInDays: 30 + Math.floor(rng() * 336),
       },
+      evaluatedInDays: 0,
       tx: {
         merchantId: catalog.merchantId,
         amountPaise: amount,
@@ -451,7 +471,6 @@ export function generateBatchCorpus(seed: number = BATCH_SEED): BatchCorpus {
   const catalog = loadCatalog();
   return {
     seed,
-    generatedAt: BATCH_EPOCH, // corpus is defined relative to this fixed epoch
     catalog,
     inScope: genInScope(rng, catalog, 25),
     outOfScope: genOutOfScope(rng, catalog, 15),

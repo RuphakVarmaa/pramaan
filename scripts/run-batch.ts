@@ -19,8 +19,7 @@
 // as measured (per-run variance is the honest cost of measuring real work).
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 import { generateEd25519KeyPair, sign as cryptoSign } from '../src/crypto.js';
@@ -44,16 +43,22 @@ import {
 import { pramaanFraudGate } from '../src/passthrough.js';
 import {
   generateBatchCorpus,
+  repoRoot,
   BATCH_SEED,
-  BATCH_EPOCH,
   type PurchaseScenario,
   type DisputeScenario,
   type FlaggedScenario,
   type BatchCorpus,
 } from './gen-batch.js';
+
+const DAY_MS = 86_400_000;
+const runStartMs = Date.now();
+const isoAt = (daysFromRunStart: number): string =>
+  new Date(runStartMs + daysFromRunStart * DAY_MS).toISOString();
+const runStartIso = new Date(runStartMs).toISOString();
 import type { DelegationArtifactWire } from '../src/types.js';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = repoRoot();
 const METRICS_DIR = join(ROOT, 'metrics');
 const GENERATED_DIR = join(METRICS_DIR, 'generated');
 
@@ -77,23 +82,42 @@ function rupees(paise: bigint): string {
 // self-contained so the batch does not depend on server env).
 // ---------------------------------------------------------------------------
 
-import { createHash } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 
 function signerFor(seed: number, agentId: string): Signer {
+  // Deterministic Ed25519: the seed hashes to a 32-byte private key (wrapped
+  // in a PKCS8 DER shell). The PUBLIC key is then DERIVED from that private
+  // key (node:crypto does the Ed25519 scalar multiplication) — the raw seed
+  // is NOT the public key.
   const raw = createHash('sha256')
     .update(`${seed}:${agentId}`, 'utf8')
     .digest();
-  const pkcs8Prefix = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
-  const spkiPrefix = new Uint8Array([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
+  const pkcs8 = Buffer.concat(
+    [new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]), raw],
+  );
+  const privKey = createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' });
+  const pubKey = createPublicKey(privKey);
   return {
-    privateKey: Buffer.concat([pkcs8Prefix, raw]).toString('base64'),
-    publicKey: Buffer.concat([spkiPrefix, raw]).toString('base64'),
+    privateKey: pkcs8.toString('base64'),
+    publicKey: pubKey.export({ type: 'spki', format: 'der' }).toString('base64'),
   };
 }
 
-// ---------------------------------------------------------------------------
-// scenario execution — purchase path (mirrors the /checkout flow, module-level)
-// ---------------------------------------------------------------------------
+/** Materialize the corpus's relative scope into the absolute form the frozen
+ *  artifact module requires (expiresAt > issuedAt at mint time). */
+function materialize(s: PurchaseScenario | DisputeScenario | FlaggedScenario): {
+  categories: string[];
+  maxPerTxnPaise: bigint;
+  maxAggregatePaise: bigint;
+  expiresAt: string;
+} {
+  return {
+    categories: s.scope.categories,
+    maxPerTxnPaise: s.scope.maxPerTxnPaise,
+    maxAggregatePaise: s.scope.maxAggregatePaise,
+    expiresAt: isoAt(s.scope.expiresInDays),
+  };
+}
 
 interface PurchaseOutcome {
   scenario: string;
@@ -111,14 +135,15 @@ function runPurchase(
   signer: Signer,
 ): PurchaseOutcome {
   const db = openLedger(':memory:');
+  // Merchant mismatch: the artifact is issued for the CATALOG merchant (a
+  // valid, correctly-signed artifact) and the cart names a DIFFERENT merchant
+  // — so only the cart is wrong, the signature is real.
   const { artifact, sig } = issueDelegation(
     {
-      merchantId: s.cart.merchantId === 'somebody-else-commerce'
-        ? s.cart.merchantId // merchant mismatch: artifact FOR the rogue merchant,
-        : 'kadai-and-co',   // so the signature is valid and only the CART differs
+      merchantId: 'kadai-and-co',
       agentId: s.agentId,
       principal: s.principal,
-      scope: s.scope,
+      scope: materialize(s),
     },
     signer,
   );
@@ -145,7 +170,8 @@ function runPurchase(
     reason: 'batch issuance',
   });
 
-  const v = verifyArtifact(wire, sig, signer.publicKey, BATCH_EPOCH);
+  const decisionClock = isoAt(s.evaluatedInDays);
+  const v = verifyArtifact(wire, sig, signer.publicKey, decisionClock);
   if (!v.ok) {
     appendLedgerEvent(db, {
       type: 'ATTEMPT_BLOCKED',
@@ -169,7 +195,7 @@ function runPurchase(
   const verdict = evaluateGate({
     artifact: v.artifact,
     cart: s.cart,
-    now: BATCH_EPOCH,
+    now: decisionClock,
     aggregateSpentPaise: aggregateSpent(db, v.artifact.artifactId),
   });
 
@@ -246,7 +272,7 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
       merchantId: 'kadai-and-co',
       agentId: s.agentId,
       principal: s.principal,
-      scope: s.scope,
+      scope: materialize(s),
     },
     signer,
   );
@@ -271,11 +297,13 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
     verdict: 'ALLOW',
     reason: 'batch issuance',
   });
-  const v = verifyArtifact(wire, sig, signer.publicKey, BATCH_EPOCH);
+  const decisionClock = isoAt(s.evaluatedInDays);
+  const v = verifyArtifact(wire, sig, signer.publicKey, decisionClock);
+  if (!v.ok) throw new Error(`disputed scenario ${s.index}: artifact invalid — ${v.reason}`);
   const verdict = evaluateGate({
-    artifact: v.ok ? v.artifact : null as unknown as import('../src/types.js').DelegationArtifact,
+    artifact: v.artifact,
     cart: s.cart,
-    now: BATCH_EPOCH,
+    now: decisionClock,
     aggregateSpentPaise: aggregateSpent(db, artifact.artifactId),
   });
   if (v.ok && verdict.allowed) {
@@ -302,7 +330,7 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
       type: 'ATTEMPT_BLOCKED',
       artifactId: artifact.artifactId,
       verdict: 'BLOCK',
-      reason: v.ok ? (verdict.reason ?? 'GATE_UNSPECIFIED') : v.reason,
+      reason: verdict.reason ?? 'GATE_UNSPECIFIED',
     });
   }
 
@@ -318,7 +346,7 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
 
   const t0 = performance.now();
   const pack = generateEvidencePack(db, artifact.artifactId, disputeId, {
-    now: BATCH_EPOCH,
+    now: decisionClock,
     dataDir,
   });
   const t1 = performance.now();
@@ -492,10 +520,10 @@ async function run(): Promise<void> {
   const report = {
     schema: 'pramaan-batch-report/1',
     seed: BATCH_SEED,
-    batchEpoch: BATCH_EPOCH,
+    runStartedAt: runStartIso,
     paymentsMode: 'stub', // PRAMAAN_STUB_PAYMENTS semantics; no network
     reproducibility:
-      'Scenario corpus generated by scripts/gen-batch.ts with mulberry32(seed). The same seed reproduces the same batch.',
+      'Scenario corpus generated by scripts/gen-batch.ts with mulberry32(seed). The same seed reproduces the same corpus (carts, caps, expiry offsets, risk signals); the runner materializes expiry offsets against the real clock because issueDelegation requires expiresAt > issuedAt at mint time. Wall-clock evidence latency is measured, not simulated.',
     totals: {
       scenarios: 60,
       inScope: 25,
@@ -567,7 +595,7 @@ async function run(): Promise<void> {
   const lines: string[] = [];
   lines.push('# Pramaan — Batch Metrics Summary');
   lines.push('');
-  lines.push(`Generated by \`npm run batch\` (scripts/run-batch.ts) against the real modules — artifact, gate, ledger, evidence, passthrough — with stub payments (zero network). Seed **${BATCH_SEED}**, batch epoch ${BATCH_EPOCH}. The same seed reproduces this batch exactly (except wall-clock latency, which is measured, not simulated).`);
+  lines.push(`Generated by \`npm run batch\` (scripts/run-batch.ts) against the real modules — artifact, gate, ledger, evidence, passthrough — with stub payments (zero network). Seed **${BATCH_SEED}**, run start ${runStartIso}. The same seed reproduces this batch exactly (except wall-clock latency, which is measured, not simulated).`);
   lines.push('');
   lines.push('| Metric (CONTRACTS.md §9) | Value |');
   lines.push('|---|---|');
@@ -607,7 +635,7 @@ async function run(): Promise<void> {
   writeFileSync(join(METRICS_DIR, 'summary.md'), lines.join('\n'), 'utf8');
 
   // ---- console summary ----
-  console.log('pramaan batch — 60 scenarios, seed', BATCH_SEED);
+  console.log('pramaan batch — 60 scenarios, seed', BATCH_SEED, '· run start', runStartIso);
   console.log('  in-scope pass rate        ', pct(inScopePassed, 25));
   console.log('  out-of-scope block rate  ', pct(outOfScopeBlocked, 15));
   console.log('  evidence latency median  ', median(latencies).toFixed(1), 'ms');
@@ -630,7 +658,7 @@ async function pramaanFraudGateRunner(s: FlaggedScenario, signer: Signer): Promi
         merchantId: 'kadai-and-co',
         agentId: s.agentId,
         principal: s.principal,
-        scope: s.scope,
+        scope: materialize(s),
       },
       signer,
     );
@@ -669,8 +697,8 @@ async function pramaanFraudGateRunner(s: FlaggedScenario, signer: Signer): Promi
     s.riskSignals,
     artifactWire && sig ? { wire: artifactWire, sig } : null,
     {
-      now: BATCH_EPOCH,
-      verifyArtifact: (w, s2, n) => verifyArtifact(w, s2, signer.publicKey, n ?? BATCH_EPOCH),
+      now: runStartIso,
+      verifyArtifact: (w, s2, n) => verifyArtifact(w, s2, signer.publicKey, n ?? runStartIso),
       evaluateGate: (w, tx, n) => {
         // passthrough already verified the signature; here we evaluate scope
         // for THIS transaction via the real gate with a single-line cart.
