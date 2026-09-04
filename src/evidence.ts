@@ -49,7 +49,6 @@ import {
 } from './templates/evidence.js';
 
 export { renderEvidencePack } from './templates/evidence.js';
-export type { EvidencePack } from './templates/evidence.js';
 
 export interface GenerateEvidenceOptions {
   /** Generation moment (UTC ISO). Defaults to now. Deterministic in tests. */
@@ -193,6 +192,34 @@ export function parseAttemptCategory(reason: string | undefined): string | null 
   }
   if (/^[a-z][a-z0-9-]*$/.test(trimmed)) return trimmed; // bare category token
   return null;
+}
+
+/**
+ * Human display form of an attempt reason: compact category JSON becomes
+ * "coffee — 2 × KC-COF-CHIK-250"; gate codes and other strings pass through.
+ */
+export function displayAttemptReason(reason: string | null): string | null {
+  if (reason === null) return null;
+  const trimmed = reason.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const j = JSON.parse(trimmed) as Record<string, unknown>;
+      const cats = Array.isArray(j['categories'])
+        ? j['categories'].filter((c): c is string => typeof c === 'string')
+        : [];
+      const skus = Array.isArray(j['skus'])
+        ? j['skus'].filter((s): s is string => typeof s === 'string')
+        : [];
+      const qty = typeof j['qty'] === 'number' && Number.isFinite(j['qty']) ? j['qty'] : null;
+      const parts: string[] = [];
+      if (cats.length > 0) parts.push(cats.join(', '));
+      if (skus.length > 0) parts.push(`${qty !== null && qty !== 1 ? `${qty} × ` : ''}${skus.join(', ')}`);
+      if (parts.length > 0) return parts.join(' — ');
+    } catch {
+      /* fall through to raw */
+    }
+  }
+  return trimmed;
 }
 
 // ---------------------------------------------------------------------------
@@ -455,7 +482,7 @@ export function generateEvidencePack(
       type: r.type,
       amountPaise: r.amountPaise ?? null,
       verdict: r.verdict ?? null,
-      reason: r.reason ?? null,
+      reason: displayAttemptReason(r.reason ?? null),
       orderId: r.orderId ?? null,
       hash8: r.selfHash.slice(0, 8),
     })),

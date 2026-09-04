@@ -112,15 +112,17 @@ export interface EvidencePackData {
 // ---------------------------------------------------------------------------
 
 const inr = new Intl.NumberFormat('en-IN', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 
-/** bigint paise -> "₹1,25,000.00" (en-IN grouping). */
+/** bigint paise -> "₹1,25,000.00" (en-IN grouping; (paise/100) at the boundary, never a float). */
 export function fmtPaise(paise: bigint): string {
-  const rupees = paise / 100n;
-  const p = paise % 100n;
-  return `₹${inr.format(Number(rupees))}.${p.toString().padStart(2, '0')}`;
+  const neg = paise < 0n;
+  const abs = neg ? -paise : paise;
+  const rupees = abs / 100n;
+  const p = abs % 100n;
+  return `${neg ? '−' : ''}₹${inr.format(Number(rupees))}.${p.toString().padStart(2, '0')}`;
 }
 
 /** UTC ISO -> "04 Sep 2026, 21:32:05 IST" (Asia/Kolkata, no webfont, no libs). */
@@ -336,7 +338,8 @@ export function renderEvidencePack(data: EvidencePackData): string {
   const footer = `
   <footer>
     <div class="footer-rule"></div>
-    <p>SHA-256 of this document: <span class="mono hash">${esc(d.packSha256)}</span></p>
+    <p>Integrity seal (SHA-256 of this document with the seal field zeroed): <span class="mono hash">${esc(d.packSha256)}</span></p>
+    <p class="fine">The pack&rsquo;s authoritative digest &mdash; sha256 of the delivered file bytes &mdash; is returned by the generating system alongside this document; the seal above is recomputable from the file alone by zeroing the seal value and hashing the whole.</p>
     <p>Generated ${esc(d.generatedAtIst)} <span class="tz-alt">(${esc(d.generatedAtUtc)})</span></p>
     <p class="brand">Pramaan &mdash; proof of delegation</p>
   </footer>`;
