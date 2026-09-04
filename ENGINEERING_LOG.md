@@ -177,3 +177,73 @@ honesty; sidecar-absent fallback + honest-unavailable path; retroactive-edit
 (tampered SQL) chain break detection; self-hash mirror identity; en-IN
 formatting matrix; reason-parser tolerance; interleaved-delegations span
 verification. Full suite at landing: 87/87 across 8 files.
+
+---
+
+### 23:50 — S5 BATCH lands: the measured proof (scripts + metrics)
+
+**Delivered:** `scripts/gen-batch.ts` (seeded corpus generator, mulberry32,
+seed 20260904 committed), `scripts/run-batch.ts` (runs the 60 scenarios on
+the real modules — artifact, gate, ledger, evidence, passthrough — stub
+payments, per-scenario `:memory:` ledgers, deterministic per-agent Ed25519
+signers), `scripts/smoke.ts` (full-arc app smoke via `fastify.inject()`,
+10 route steps, chain verify), `scripts/demo.ts` (the video arc: unicode
+box-drawing narrative over the real modules, four demo moments, verifyChain
+finale). Outputs: `metrics/report.json` (raw numbers + per-scenario detail +
+seed), `metrics/summary.md` (human summary + exceptions), `metrics/chart.svg`
+(hand-authored SVG, the false-positive before/after bar pair),
+`metrics/generated/` (gitignored, 10 evidence packs per run).
+
+**Headline numbers (seed 20260904, stub mode):** in-scope 25/25 captured;
+out-of-scope 15/15 blocked with reason codes; evidence latency median
+~0.7–1.5 ms (measured, not simulated — real dispute→dossier renders over
+small ledger spans); flagged-legit 5/5 released on delegation proof;
+flagged-malicious 5/5 blocked; false-positive cost ₹7,559 → ₹0.
+
+**Incidents worth keeping:**
+
+1. **Ed25519 public key is not the seed.** First signer derivation wrapped
+   the same sha256 bytes as both PKCS8 private key and SPKI public key.
+   Signing worked; verification failed for every artifact. Symptom was
+   confusing: in-scope scenarios "passed" because their blocked outcomes were
+   recorded (not thrown), and the first hard failure surfaced in the dispute
+   path. Fix: derive the public key with `createPublicKey(createPrivateKey(...))`
+   — node:crypto does the Ed25519 scalar multiplication. The corpus was never
+   at fault.
+
+2. **Risk-engine trigger arithmetic.** First flagging-signals generator drew
+   combos like velocity-only (score 1 = ALLOW). Result: 3 of 5
+   flagged-malicious scenarios sailed through as `RISK_ENGINE_CLEAR` —
+   malicious block rate 40%, reported honestly in that run's exceptions.
+   Root cause was mine (the generator's premise was "flagged" but the signals
+   didn't flag). Fix: every combo now trips ≥ 2 triggers. The lesson: when a
+   metric embarrasses you, check your harness before your system — but report
+   the bad number while you check.
+
+3. **`issueDelegation` cannot mint expired artifacts** (expiresAt must be >
+   issuedAt at mint). The corpus therefore stores expiry OFFSETS in days and
+   the runner materializes them against the real clock; the ARTIFACT_EXPIRED
+   scenarios mint short-window artifacts and evaluate the gate after lapse.
+   This is the honest construction — the expired-artifact test exercises a
+   real issuance that genuinely expired, not a fabricated wire object.
+
+4. **Paths from dist/.** Scripts run from `dist/scripts/`, so `../catalog.json`
+   and `../metrics/` resolved inside `dist/` (tsc had copied a catalog there
+   earlier — silently stale). Fix: `repoRoot()` walks up until `package.json`
+   + `catalog.json` coexist.
+
+**Exceptions list (final run):** 1 — out-of-scope#1 planted
+CATEGORY_OUT_OF_SCOPE but the gate blocked with CAP_EXCEEDED_PER_TXN first
+(the cart also tripped the per-txn cap; first-match ordering per CONTRACTS
+§3). Informational, reported, not suppressed.
+
+**Contract observations (reported, not fixed):**
+
+- `app.ts` `LedgerAppendEvent` uses `T | null` for optional fields while
+  `ledger.ts` `LedgerEvent` uses `T | undefined` — every adapter needs a
+  null-strip shim. Cosmetic, but it cost every integrator a mapping function.
+
+**Test proof at landing:** typecheck 0 errors; build clean; `npm run batch`,
+`npm run smoke`, `npm run demo` all exit 0 from `dist/`; full suite 87/87
+untouched. Batch reproducibility verified: two consecutive runs produce
+identical outcomes (only wall-clock latency differs, as documented).

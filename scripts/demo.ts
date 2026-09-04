@@ -429,9 +429,13 @@ async function main(): Promise<void> {
 
   const rows = readLedger(db);
   for (const r of rows) {
-    const amt = r.amountPaise !== undefined ? rupees(r.amountPaise).padStart(10) : ''.padEnd(10);
-    const why = r.reason !== undefined ? `  ${r.reason.slice(0, 26)}` : '';
-    line(`seq ${String(r.seq).padStart(2)}  ${r.type.padEnd(16)} ${amt} ${r.prevHash.slice(0, 6)}→${r.selfHash.slice(0, 6)}${why}`);
+    const amt = r.amountPaise !== undefined ? rupees(r.amountPaise).padStart(10) + ' ' : ' '.repeat(11);
+    const why =
+      r.reason !== undefined
+        ? (r.reason.length > 20 ? r.reason.slice(0, 20) + '…' : r.reason).padEnd(22)
+        : ' '.repeat(22);
+    const row = `  seq ${String(r.seq).padStart(2)}  ${r.type.padEnd(17)}${amt}${r.prevHash.slice(0, 6)}→${r.selfHash.slice(0, 6)}  ${why}`;
+    console.log(`│${row.slice(0, W - 2).padEnd(W - 2)}│`);
   }
   line('');
   const chain = verifyChain(rows);
