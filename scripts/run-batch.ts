@@ -48,7 +48,6 @@ import {
   BATCH_EPOCH,
   type PurchaseScenario,
   type DisputeScenario,
-  type FlaggedScenario,
   type BatchCorpus,
 } from './gen-batch.js';
 import type { DelegationArtifactWire } from '../src/types.js';
@@ -337,7 +336,10 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
 }
 
 // ---------------------------------------------------------------------------
-// flagged pass-through path
+// flagged pass-through path — pramaanFraudGate is async, so the runner is
+// async too: pramaanFraudGateRunner below stands in for the route layer
+// (app.ts POST /fraud/evaluate) and appends the AGENT_RELEASED / ATTEMPT_BLOCKED
+// row, exactly as the route does.
 // ---------------------------------------------------------------------------
 
 interface FlaggedOutcome {
@@ -345,122 +347,6 @@ interface FlaggedOutcome {
   action: 'RELEASE' | 'BLOCK';
   reason: string;
   amountPaise: bigint;
-}
-
-function runFlagged(s: FlaggedScenario, signer: Signer): FlaggedOutcome {
-  const db = openLedger(':memory:');
-  let artifactWire: DelegationArtifactWire | null = null;
-  let sig: string | null = null;
-
-  if (s.kind === 'flagged-legit') {
-    const issued = issueDelegation(
-      {
-        merchantId: 'kadai-and-co',
-        agentId: s.agentId,
-        principal: s.principal,
-        scope: s.scope,
-      },
-      signer,
-    );
-    artifactWire = {
-      version: 1,
-      artifactId: issued.artifact.artifactId,
-      merchantId: issued.artifact.merchantId,
-      agentId: issued.artifact.agentId,
-      principal: issued.artifact.principal,
-      scope: {
-        categories: issued.artifact.scope.categories,
-        maxPerTxnPaise: issued.artifact.scope.maxPerTxnPaise.toString(),
-        maxAggregatePaise: issued.artifact.scope.maxAggregatePaise.toString(),
-        expiresAt: issued.artifact.scope.expiresAt,
-      },
-      issuedAt: issued.artifact.issuedAt,
-      nonce: issued.artifact.nonce,
-    };
-    sig = issued.sig;
-    appendLedgerEvent(db, {
-      type: 'DELEGATION_ISSUED',
-      artifactId: issued.artifact.artifactId,
-      verdict: 'ALLOW',
-      reason: 'batch issuance',
-    });
-    // ground truth: one captured purchase under this artifact (aggregate headroom)
-    appendLedgerEvent(db, {
-      type: 'PAYMENT_CAPTURED',
-      artifactId: issued.artifact.artifactId,
-      orderId: s.tx.orderId,
-      amountPaise: 0n, // prior spend zero: keeps this artifact's aggregate clean
-      verdict: 'ALLOW',
-      reason: 'captured (batch stub)',
-    });
-  }
-
-  const verdict = await0(
-    pramaanFraudGate(
-      {
-        merchantId: s.tx.merchantId,
-        agentId: s.agentId,
-        amountPaise: s.tx.amountPaise,
-        orderId: s.tx.orderId,
-        category: s.tx.category,
-      },
-      s.riskSignals,
-      artifactWire && sig ? { wire: artifactWire, sig } : null,
-      {
-        now: BATCH_EPOCH,
-        verifyArtifact: (w, s2, n) => verifyArtifact(w, s2, signer.publicKey, n),
-        evaluateGate: (w, tx, n) => {
-          const v = verifyArtifact(w, '', signer.publicKey, n); // sig already checked
-          if (!v.ok) return { ok: false, reason: v.reason };
-          const g = evaluateGate({
-            artifact: v.artifact,
-            cart: {
-              merchantId: tx.merchantId,
-              lines: [
-                {
-                  sku: 'batch-tx',
-                  qty: 1,
-                  unitPaise: tx.amountPaise,
-                  category: tx.category ?? '',
-                },
-              ],
-            },
-            now: n,
-            aggregateSpentPaise: aggregateSpent(db, w.artifactId),
-          });
-          return g.allowed
-            ? { ok: true }
-            : { ok: false, reason: g.reason ?? 'SCOPE_REFUSED' };
-        },
-        aggregateSpent: (artifactId) => aggregateSpent(db, artifactId),
-      },
-    ),
-  );
-
-  // The caller (this runner, standing in for the route) records the outcome.
-  appendLedgerEvent(db, {
-    type: verdict.action === 'RELEASE' ? 'AGENT_RELEASED' : 'ATTEMPT_BLOCKED',
-    artifactId: artifactWire?.artifactId,
-    orderId: s.tx.orderId,
-    amountPaise: s.tx.amountPaise,
-    verdict: verdict.action === 'RELEASE' ? 'RELEASE' : 'BLOCK',
-    reason: verdict.reason,
-  });
-
-  return {
-    scenario: `${s.kind}#${s.index}`,
-    action: verdict.action,
-    reason: verdict.reason,
-    amountPaise: s.tx.amountPaise,
-  };
-}
-
-/** passthrough is async; the runner is sync-style. Tiny await shim. */
-function await0<T>(p: Promise<T> | T): T {
-  if ((p as Promise<T>).then !== undefined) {
-    throw new Error('run-batch: use run() (async main) for async paths');
-  }
-  return p as T;
 }
 
 // ---------------------------------------------------------------------------
