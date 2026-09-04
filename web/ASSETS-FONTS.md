@@ -1,6 +1,6 @@
-# web/public/fonts — Self-Hosted Font Manifest
+# web/ASSETS-FONTS.md — Self-Hosted Font Manifest
 
-All fonts served from `web/public/fonts/` (no CDN requests at runtime).
+All fonts are served from `web/public/fonts/` (no CDN requests at runtime).
 Google served these as **variable fonts** — a single woff2 covers the full weight
 range declared in our `@font-face` blocks (`font-weight: 100 900` / `200 800`).
 
@@ -22,6 +22,10 @@ range declared in our `@font-face` blocks (`font-weight: 100 900` / `200 800`).
 - serif: `"Iowan Old Style", Georgia, "Times New Roman", serif`
 
 Licenses: JetBrains Mono — OFL 1.1 (© JetBrains Inc., Philipp Nurullin, Konstantin Bessonov).
-Newsreader — OFL 1.1 (© 2016 The Newsreader Project Authors, designed by François Palet / Production Type).
+Newsreader — OFL 1.1 (© 2016 The Newsreader Project Authors, François Palet / Production Type).
 
-*Orchestrator: please merge these rows into the repo-root ASSETS.md (owned by S7).*
+The masthead seal/chain-link mark, the release/block seals, and the favicon are
+original inline SVG drawn for this console (no icon font, no CDN).
+
+*Orchestrator: please merge the font rows above into the repo-root ASSETS.md
+(owned by S7) — these three woff2 files are the only third-party assets in web/.*

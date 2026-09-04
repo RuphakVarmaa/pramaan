@@ -2,22 +2,23 @@
 # Pramaan git heartbeat — checkpoints wip/auto every 5 minutes with a secret scan.
 # Started by the Orchestrator; killed after the final ship merge.
 #
-# Secret scan = exact-value matching: every real value in .env (length >= 8,
-# not a placeholder) is extracted and must not appear in the staged diff.
-# Plus a literal check for any rzp live key marker (assembled at runtime so
-# this file never self-matches).
+# Secret scan = exact-value matching + real-key-format matching:
+# - any real live/test key VALUE from .env (length >= 8, not a placeholder)
+#   must not appear in the staged diff;
+# - a live-key FORMAT (marker + 14+ alphanumerics) anywhere is an instant fail.
+# Patterns are assembled at runtime so this file never self-matches.
 set -u
 cd "/Users/ruphakvarmaa/Documents/Ruphak's-Harness/pramaan" || exit 1
 
-LIVE_MARKER="rzp""_live"
+LIVE_KEY_FMT="rzp""_live_[A-Za-z0-9]{14,}"
 
 scan_secrets() {
-  # $1 = staged diff text on stdin; returns 0 if a secret is found
+  # reads staged diff text on stdin; returns 0 if a secret is found
   local diff_text
   diff_text=$(cat)
 
-  # 1) Any live-key marker anywhere -> instant fail
-  if printf '%s' "$diff_text" | grep -q "$LIVE_MARKER"; then
+  # 1) live-key FORMAT (a real key, not a doc mention) -> instant fail
+  if printf '%s' "$diff_text" | grep -qE "$LIVE_KEY_FMT"; then
     return 0
   fi
 

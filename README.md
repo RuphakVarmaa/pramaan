@@ -69,8 +69,10 @@ Node 22+ required (`node:sqlite`, Ed25519 in `node:crypto`).
 ```bash
 npm install
 cp .env.example .env        # add your Razorpay TEST keys (rzp_test_...)
-npm run demo
+npm run build && npm run demo
 ```
+
+(`npm run demo` runs from `dist/` — the build is a one-time `tsc`, a few seconds.)
 
 The demo (`scripts/demo.ts`) runs the full arc end-to-end: issue a delegation → in-scope attempt passes the gate → out-of-scope attempt is refused with a reason code → a dispute is opened → the evidence dossier is rendered → a flagged transaction with proof is released by pass-through. No server needed; it exercises the same code the routes use.
 

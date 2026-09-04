@@ -26,7 +26,7 @@ npm run batch                         # 5. 60 seeded scenarios -> metrics/report
                                       #    (needs Razorpay TEST keys in .env, or use PRAMAAN_STUB_PAYMENTS=1)
 ```
 
-Want to drive it by hand over HTTP instead? `npm start`, then follow the curl sequence in the demo section of [ENGINEERING_LOG.md](ENGINEERING_LOG.md) or the route table in [CONTRACTS.md](CONTRACTS.md) §4. The one graceful-failure path (documented refusal) is shown in the tour's step 2 — the gate refuses with a reason, nothing crashes, the refusal is ledgered, and the next attempt proceeds normally.
+Want to drive it by hand over HTTP instead? `npm start`, then use the route table in [CONTRACTS.md](CONTRACTS.md) §4 (`POST /delegations` → `POST /gate` → `POST /checkout` → `POST /disputes` → `GET /evidence/:delegationId`). The one graceful-failure path (documented refusal) is shown in the tour's step 2 — the gate refuses with a reason, nothing crashes, the refusal is ledgered, and the next attempt proceeds normally.
 
 `npm run demo` and `npm run batch` come from `scripts/` (swarm S5's batch runner produces `metrics/`; the demo path is the end-to-end arc above).
 
@@ -36,7 +36,7 @@ Want to drive it by hand over HTTP instead? `npm start`, then follow the curl se
 
 ### 1. Explainable money actions
 
-Every decision the system makes about money — allow or refuse — carries a machine-readable reason code, and the gate is a **pure function**: no I/O, no clock reads, no side effects. A caller supplies `now` and the running aggregate; the gate only decides. The reason codes (`ARTIFACT_EXPIRED`, `CAP_EXCEEDED`, `CATEGORY_NOT_IN_SCOPE`, `SIG_INVALID`, …) are enumerated in `src/types.ts` and produced by `src/gate.ts`.
+Every decision the system makes about money — allow or refuse — carries a machine-readable reason code, and the gate is a **pure function**: no I/O, no clock reads, no side effects. A caller supplies `now` and the running aggregate; the gate only decides. The reason codes (`ARTIFACT_EXPIRED`, `CAP_EXCEEDED_PER_TXN`, `CAP_EXCEEDED_AGGREGATE`, `CATEGORY_OUT_OF_SCOPE`, `SIGNATURE_INVALID`, …) are enumerated in `src/types.ts` and produced by `src/gate.ts`.
 
 | Where | Command |
 |---|---|
@@ -62,7 +62,7 @@ The route suite contains a dedicated no-artifact test: a checkout attempt withou
 
 ### 4. Audit trail
 
-Every money action appends one row to a SHA-256 hash-chained SQLite ledger (`src/ledger.ts`): `DELEGATION_ISSUED`, `ATTEMPT_BLOCKED`, `ATTEMPT_ALLOWED`, `PAYMENT_CAPTURED`, `DISPUTE_OPENED`, `EVIDENCE_PACKED`, `AGENT_RELEASED`. Each row's `prevHash` is the prior row's hash. `verifyChain()` walks the chain; the tamper test mutates a row and proves the break is detected at the exact sequence number.
+Every money action appends one row to a SHA-256 hash-chained SQLite ledger (`src/ledger.ts`): `DELEGATION_ISSUED`, `ATTEMPT_BLOCKED`, `ATTEMPT_ALLOWED`, `PAYMENT_CAPTURED`, `DISPUTE_OPENED`, `EVIDENCE_GENERATED`, `AGENT_RELEASED`. Each row's `prevHash` is the prior row's hash. `verifyChain()` walks the chain; the tamper test mutates a row and proves the break is detected at the exact sequence number.
 
 | Where | Command |
 |---|---|

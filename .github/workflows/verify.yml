@@ -1,0 +1,44 @@
+# Pramaan CI — typecheck, full test suite, batch in stub mode.
+#
+# No secrets required: the batch step runs with PRAMAAN_STUB_PAYMENTS=1 and
+# NO Razorpay keys, so CI is green on any fork/PR without configuration.
+# (Stub mode is the documented fallback from CONTRACTS.md §4.1 — deterministic
+# fake order ids, surfaced in /health and the engineering log; never silent.)
+# The batch step is load-bearing (it is the "measured on held-out data" bar),
+# so continue-on-error is deliberately FALSE: if the batch regresses, CI fails.
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+      - name: Batch metrics (stub mode — no Razorpay keys, no secrets)
+        env:
+          PRAMAAN_STUB_PAYMENTS: "1"
+        run: npm run batch

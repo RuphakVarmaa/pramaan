@@ -1,0 +1,53 @@
+# llms.txt — Pramaan (प्रमाण)
+
+Pramaan is an open, verifiable proof-of-delegation and dispute-evidence layer for AI-agent payments, built on Razorpay test mode. When an AI agent pays and the human disputes it, the merchant cannot prove what the agent was allowed to do. Pramaan is that proof: an Ed25519-signed delegation artifact captured before the agent acts, a pure gate that refuses every out-of-scope payment with a machine reason code, a hash-chained SQLite ledger that makes the record tamper-evident, a self-contained HTML evidence dossier assembled at dispute time, and a fraud pass-through that releases flagged-but-authorized agents on proof. Stack: Node 22+ (node:sqlite, node:crypto), TypeScript strict, Fastify, Vitest, GitHub Actions. Test mode only; no live keys.
+
+## Verify it
+
+- Install and build: `npm install && npm run build`
+- Full end-to-end arc (delegation → gate → capture → dispute → evidence → pass-through): `npm run demo`
+- Gate reason codes and boundary cases: `npx vitest run test/gate.test.ts`
+- Ledger tamper detection: `npx vitest run test/ledger.test.ts`
+- No payment without a valid artifact: `npx vitest run test/routes.test.ts`
+- Batch metrics (60 seeded scenarios): `npm run batch` (or `PRAMAAN_STUB_PAYMENTS=1 npm run batch` with no Razorpay keys)
+- Everything a judge needs, mapped: JUDGE.md
+
+## What to read, in order
+
+- README.md — the problem, the three layers, quickstart, honest limitations
+- JUDGE.md — every claim mapped to file + command; the 60-second tour
+- ARCHITECTURE.md — the diagram, the three flows, and the decisions with reasons
+- CONTRACTS.md — frozen module interfaces (the source of truth for code changes)
+- AGENTS.md — the invariants any coding agent must hold here
+- ENGINEERING_LOG.md — dated build log, incidents included
+- PAPER.md — the working paper: problem, protocol, economics, evaluation
+
+## File map
+
+- src/crypto.ts — Ed25519 keypair (optional deterministic seed), sign, verify
+- src/artifact.ts — delegation artifact: canonical JSON, hashing, wire format
+- src/ledger.ts — append-only node:sqlite ledger, SHA-256 hash chain, verifyChain()
+- src/gate.ts — pure scope evaluation: reason codes, no I/O, caller-supplied `now`
+- src/evidence.ts — dossier assembly from the ledger span
+- templates/evidence-pack.html — function-based HTML template (no engine dep)
+- src/passthrough.ts + src/routes/fraud.ts — fraud interop: release on proof, else block
+- risk-mock/engine.ts — legible mock risk engine (3 signals, any-two-of-three)
+- src/razorpay.ts — Razorpay test-mode adapter (plain fetch, no SDK; stub fallback)
+- src/server.ts + src/routes/* — Fastify surface: /delegations /gate /checkout /disputes /evidence /fraud/evaluate /ledger /keys /health /catalog
+- scripts/demo.ts — end-to-end arc; scripts/smoke.ts — liveness; scripts/gen-batch.ts + scripts/run-batch.ts — the batch
+- metrics/report.json, metrics/summary.md, metrics/chart.svg — batch outputs
+- web/ — React console (merchant desk, agent playground, disputes, ledger view)
+- data/ — gitignored runtime state (pramaan.db, disputes.json)
+- .github/workflows/verify.yml — CI: typecheck + tests + stub-mode batch
+
+## Artifact schema (brief)
+
+A delegation artifact binds: merchantId, agentId, principal, and scope — allowed categories, maxPerTxnPaise, maxAggregatePaise, expiresAt — plus issuedAt and a nonce, under version 1. It is signed (Ed25519) over its canonical JSON, and every amount is integer paise (bigint in code, string in JSON).
+
+## Ledger hash rule
+
+Every money event appends one row: seq (1-based), ts, type, artifactId?, orderId?, amountPaise?, verdict?, reason?, prevHash, selfHash. The hash rule (authoritative, CONTRACTS.md §2.2): `selfHash = sha256( prevHash || canonicalJSON(row minus { prevHash, selfHash }) )`, both parts utf8; row n's prevHash is row n−1's selfHash (all-zero hex for seq 1). verifyChain() recomputes every selfHash and reports the first break by seq. The ledger is append-only; edits to history are detectable, not preventable — that is the design. Event types: DELEGATION_ISSUED, ATTEMPT_ALLOWED, ATTEMPT_BLOCKED, PAYMENT_CAPTURED, DISPUTE_OPENED, EVIDENCE_GENERATED, AGENT_RELEASED.
+
+## Ground rules
+
+Test mode only (`rzp_test_` keys enforced in code). All money is integer paise. Every money action writes a ledger line. No payment without a valid artifact. Metrics are honest, seeds committed. Assets licensed and cited (ASSETS.md).

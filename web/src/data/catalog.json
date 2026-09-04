@@ -1,0 +1,95 @@
+{
+  "merchant": {
+    "id": "kadai-and-co",
+    "name": "Kadai & Co.",
+    "tagline": "Specialty coffee & kitchen goods from Indiranagar, Bengaluru",
+    "agentInstructions": "You are shopping for a human principal at Kadai & Co. Prices are integer paise. Every purchase must fall within your delegation artifact's scope: allowed categories, per-transaction cap, aggregate cap, and expiry. The gate will refuse anything outside scope with a machine-readable reason code.",
+    "categories": ["coffee", "equipment", "pantry", "merch"]
+  },
+  "products": [
+    {
+      "sku": "KC-COF-CHIK-250",
+      "name": "Chikmagalur Peaberry, 250g",
+      "category": "coffee",
+      "unitPaise": 52000,
+      "description": "Washed peaberry from a single estate off the Baba Budangiri slopes. Bright acidity, black-tea finish. Roasted Thursdays."
+    },
+    {
+      "sku": "KC-COF-MALB-250",
+      "name": "Malabar Monsoon, 250g",
+      "category": "coffee",
+      "unitPaise": 48000,
+      "description": "Sixteen weeks of monsoon-wind curing turns this arabica mellow and loamy. The coffee for people who think they don't like acidity."
+    },
+    {
+      "sku": "KC-COF-BRWD-100",
+      "name": "Brewer's Dozen Espresso Blend, 100g",
+      "category": "coffee",
+      "unitPaise": 31000,
+      "description": "House espresso: 70% robusta from Coorg for crema that hangs around, 30% chikmagalur arabica so you can still taste the coffee."
+    },
+    {
+      "sku": "KC-COF-DECA-250",
+      "name": "Swiss Water Decaf, 250g",
+      "category": "coffee",
+      "unitPaise": 59000,
+      "description": "Chemical-free decaffeination that keeps the body intact. For the 8pm crowd who refuse to compromise."
+    },
+    {
+      "sku": "KC-EQP-FILT-01",
+      "name": "Kadai Channi Filter, brass",
+      "category": "equipment",
+      "unitPaise": 145000,
+      "description": "Traditional South Indian filter in solid brass, machined in Bengaluru. The 200ml size two people fight over."
+    },
+    {
+      "sku": "KC-EQP-CHAN-02",
+      "name": "Channi Dripper, ceramic",
+      "category": "equipment",
+      "unitPaise": 87000,
+      "description": "Our pour-over cone with a widened rib for faster drawdown on the 1:16 brews. Dishwasher-safe glaze."
+    },
+    {
+      "sku": "KC-EQP-TAM-53",
+      "name": "53mm Tamper, stainless",
+      "category": "equipment",
+      "unitPaise": 118000,
+      "description": "585g of machined 304 steel with a walnut handle. Calibrated flat base; no bells, no curve."
+    },
+    {
+      "sku": "KC-EQP-SCLE-01",
+      "name": "Brew Scale, 0.1g",
+      "category": "equipment",
+      "unitPaise": 239000,
+      "description": "0.1g resolution, 2kg max, USB-C. The auto-timer starts the moment the water does."
+    },
+    {
+      "sku": "KC-PAN-GHEE-500",
+      "name": "A2 Gir Cow Ghee, 500ml",
+      "category": "pantry",
+      "unitPaise": 74900,
+      "description": "Bilona-churned from free-grazing Gir herds in Kutch. Grainy at room temperature, the way it should be."
+    },
+    {
+      "sku": "KC-PAN-JAGR-350",
+      "name": "Kaatuvellum Palm Jaggery, 350g",
+      "category": "pantry",
+      "unitPaise": 18500,
+      "description": "Unfiltered palmyra jaggery from the Tamil Nadu west coast. Caramel depth white sugar pretends to have."
+    },
+    {
+      "sku": "KC-PAN-SPIC-06",
+      "name": "Filter Kaapi Spice Box, 6 tins",
+      "category": "pantry",
+      "unitPaise": 92000,
+      "description": "Cardamom, dry ginger, pepper, cinnamon, clove, nutmeg — pre-measured to doctor 40 cups of kaapi each."
+    },
+    {
+      "sku": "KC-MER-TSH-BLK",
+      "name": "Kadai Tee, black cotton",
+      "category": "merch",
+      "unitPaise": 64000,
+      "description": "220gsm combed cotton with the peaberry glyph on the back. Screen-printed in Koramangala."
+    }
+  ]
+}
