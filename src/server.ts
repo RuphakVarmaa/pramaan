@@ -7,9 +7,11 @@ import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto';
+import Fastify from 'fastify';
 import { buildApp } from './app.js';
+import { pramaanFraudGate } from './passthrough.js';
 import { createRazorpayClient, getMode, newDisputeId } from './razorpay.js';
-import { openLedger } from './ledger.js';
+import { openLedger, appendLedgerEvent, readLedger, aggregateSpent } from './ledger.js';
 import { issueDelegation, verifyArtifact } from './artifact.js';
 import type { Signer } from './artifact.js';
 import type { DatabaseSync } from 'node:sqlite';
@@ -87,28 +89,22 @@ async function main(): Promise<void> {
     dataDir: dirname(dbPath),
     razorpay: createRazorpayClient({ env }),
     ledger: {
-      append: (event) => {
-        const { appendLedgerEvent } = require('./ledger.js') as typeof import('./ledger.js');
-        return appendLedgerEvent(db, {
+      append: (event) =>
+        appendLedgerEvent(db, {
           type: event.type,
           ...(event.artifactId != null ? { artifactId: event.artifactId } : {}),
           ...(event.orderId != null ? { orderId: event.orderId } : {}),
           ...(event.amountPaise != null ? { amountPaise: event.amountPaise } : {}),
           ...(event.verdict != null ? { verdict: event.verdict } : {}),
           ...(event.reason != null ? { reason: event.reason } : {}),
-        });
-      },
+        }),
       read: (artifactId?: string, limit?: number) => {
-        const { readLedger } = require('./ledger.js') as typeof import('./ledger.js');
         let rows = readLedger(db);
         if (artifactId) rows = rows.filter((r) => r.artifactId === artifactId);
         if (typeof limit === 'number' && Number.isInteger(limit) && limit >= 0) rows = rows.slice(-limit);
         return rows;
       },
-      aggregateSpent: (artifactId: string) => {
-        const { aggregateSpent } = require('./ledger.js') as typeof import('./ledger.js');
-        return aggregateSpent(db, artifactId);
-      },
+      aggregateSpent: (artifactId: string) => aggregateSpent(db, artifactId),
     },
     disputes: {
       create: (input) => {
