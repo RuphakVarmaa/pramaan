@@ -25,6 +25,7 @@ import type {
   Verdict,
 } from './types.js';
 import { artifactToWire } from './types.js';
+import type { DatabaseSync } from 'node:sqlite';
 
 // ---------------------------------------------------------------------------
 // Ledger seam. S1 owns src/ledger.ts: appendLedgerEvent(db, event) /
@@ -72,6 +73,10 @@ export interface AppDeps {
   verifyArtifact: (wire: DelegationArtifactWire, sig: string, now: string) => VerifyResult;
   fraudGate: typeof pramaanFraudGate;
   fastify: () => FastifyInstance;
+  /** Raw ledger handle + data dir for the evidence generator (S3's module).
+   *  Optional so tests that never hit /evidence can omit it. */
+  db?: DatabaseSync;
+  dataDir?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,19 +365,24 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     return reply.code(201).send({ disputeId });
   });
 
-  // GET /evidence/:delegationId?disputeId= — S3's src/evidence.ts.
-  // Clean import point preserved; until S3 lands the route answers 501.
+  // GET /evidence/:delegationId?disputeId= — S3's forensic dossier, wired.
   app.get('/evidence/:delegationId', async (req, reply) => {
     const params = req.params as { delegationId: string };
     const query = req.query as { disputeId?: string };
-    void params;
-    void query;
-    // TODO(S3): delegate to src/evidence.ts once it lands:
-    //   import { renderEvidencePack } from './evidence.js';
-    return reply.code(501).send({
-      error: 'not_implemented',
-      reason: 'evidence module not yet landed (S3)',
+    if (!deps.db) {
+      return reply.code(501).send({
+        error: 'not_configured',
+        reason: 'evidence generator needs the raw db handle (AppDeps.db) — see src/app.ts',
+      });
+    }
+    const { generateEvidencePack, appendEvidenceGenerated } = await import('./evidence.js');
+    const pack = generateEvidencePack(deps.db, params.delegationId, query.disputeId ?? null, {
+      ...(deps.dataDir !== undefined ? { dataDir: deps.dataDir } : {}),
+      now: now(),
     });
+    appendEvidenceGenerated(deps.db, params.delegationId, pack.sha256);
+    reply.header('content-type', 'text/html; charset=utf-8');
+    return reply.send(pack.html);
   });
 
   // POST /fraud/evaluate — S4's src/passthrough.ts (landed; wired for real).
