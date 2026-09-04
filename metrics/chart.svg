@@ -14,11 +14,11 @@
   <line x1="90" y1="250" x2="510" y2="250" class="axis"/>
   <line x1="90" y1="40" x2="90" y2="250" class="axis"/>
   <line x1="90" y1="40" x2="510" y2="40" class="axis" stroke-dasharray="3 4"/>
-  <text x="82" y="44" text-anchor="end" class="tick">₹11.1k</text>
+  <text x="82" y="44" text-anchor="end" class="tick">₹7.6k</text>
   <text x="82" y="254" text-anchor="end" class="tick">₹0</text>
   <rect x="120" y="40" width="110" height="210" rx="4" fill="#c14953"/>
   <rect x="290" y="250" width="110" height="0" rx="4" fill="#2e6f40"/>
-  <text x="175" y="30" text-anchor="middle" class="val">₹11,060.00</text>
+  <text x="175" y="30" text-anchor="middle" class="val">₹7,559.00</text>
   <text x="345" y="240" text-anchor="middle" class="val">₹0.00</text>
   <text x="175" y="270" text-anchor="middle" class="lbl">Before (risk engine only)</text>
   <text x="345" y="270" text-anchor="middle" class="lbl">After (Pramaan)</text>

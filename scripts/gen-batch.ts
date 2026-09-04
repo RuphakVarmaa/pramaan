@@ -409,15 +409,21 @@ function flaggingSignals(rng: () => number): {
   headless: boolean;
   accountAgeDays: number;
 } {
-  // every combination here trips >= 2 triggers in risk-mock/engine.ts
+  // risk-mock/engine.ts BLOCKS at score >= 2 (triggers: velocity > 5,
+  // headless, accountAge < 30). Every combination here trips >= 2 triggers,
+  // so the risk engine always flags these scenarios — that is the premise of
+  // the pass-through test: what happens AFTER the flag is the measurement.
   const r = rng();
   if (r < 0.34) {
-    return { velocityPerMin: 6 + Math.floor(rng() * 4), headless: false, accountAgeDays: 365 };
+    // velocity + headless
+    return { velocityPerMin: 6 + Math.floor(rng() * 4), headless: true, accountAgeDays: 365 };
   }
   if (r < 0.67) {
-    return { velocityPerMin: 1, headless: true, accountAgeDays: 7 };
+    // velocity + new account
+    return { velocityPerMin: 7 + Math.floor(rng() * 4), headless: false, accountAgeDays: 7 };
   }
-  return { velocityPerMin: 1, headless: false, accountAgeDays: 10 };
+  // headless + new account
+  return { velocityPerMin: 1, headless: true, accountAgeDays: 10 + Math.floor(rng() * 15) };
 }
 
 function genFlagged(

@@ -53,11 +53,14 @@ const W = 76;
 let sectionCount = 0;
 
 function banner(): void {
-  console.log(`
-┌${'─'.repeat(W - 2)}┐
-│  PRAMAAN — Proof of Delegation & Dispute-Evidence Layer                        │
-│  Agent payments on Razorpay (test mode) · the full arc, live on real modules   │
-└${'─'.repeat(W - 2)}┘`);
+  const top = 'PRAMAAN — Proof of Delegation & Dispute-Evidence Layer';
+  const sub = 'Agent payments on Razorpay (test mode) · full arc, real modules';
+  const pad = (t: string): string => '  ' + t.slice(0, W - 4).padEnd(W - 4);
+  console.log('');
+  console.log(`┌${'─'.repeat(W - 2)}┐`);
+  console.log(`│${pad(top)}│`);
+  console.log(`│${pad(sub)}│`);
+  console.log(`└${'─'.repeat(W - 2)}┘`);
 }
 
 function section(title: string): void {
@@ -69,12 +72,41 @@ function section(title: string): void {
 }
 
 function line(...parts: string[]): void {
-  const s = '  ' + parts.join(' ');
-  console.log(`│${s.slice(0, W - 2).padEnd(W - 2)}│`);
+  const text = '  ' + parts.join(' ');
+  // wrap at word boundaries; only clip as a last resort (never mid-word)
+  const max = W - 4; // inner width after the two-space indent
+  const words = text.slice(2).split(' ');
+  let cur = '  ';
+  for (const word of words) {
+    if (cur.length + 1 + word.length > W - 2 && cur.trim() !== '') {
+      console.log(`│${cur.padEnd(W - 2)}│`);
+      cur = '  ' + word;
+    } else {
+      cur = cur === '  ' ? '  ' + word : cur + ' ' + word;
+    }
+  }
+  if (cur.trim() !== '' || words.length === 0) {
+    console.log(`│${cur.padEnd(W - 2)}│`);
+  }
 }
 
 function kv(k: string, v: string): void {
-  line(`${k.padEnd(22)} ${v}`);
+  // key column fixed-width so values align; long values wrap with the
+  // continuation indenting under the value column
+  const key = '  ' + k.padEnd(21);
+  const valCol = 23; // 2-space box inset + 21 key
+  const max = W - 4;
+  let cur = key + v;
+  while (cur.length > W - 2) {
+    // wrap at the last space that fits; continuation indented to the value column
+    const room = W - 4;
+    let cut = cur.lastIndexOf(' ', room);
+    if (cut <= valCol) cut = room; // no space to break on — hard cut
+    console.log(`│${cur.slice(0, cut).padEnd(W - 2)}│`);
+    cur = ' '.repeat(valCol) + cur.slice(cut).trimStart();
+  }
+  console.log(`│${cur.padEnd(W - 2)}│`);
+  void max;
 }
 
 function rule(): void {
@@ -238,7 +270,8 @@ async function main(): Promise<void> {
   // =========================================================================
   section('THE REFUSAL — the agent tries to exceed its cap, gate says no');
 
-  line('Same agent now tries a ₹2,390 brew scale — over the ₹5,000 per-txn cap.');
+  line('Same agent now tries to stock the whole kitchen: a brew scale plus');
+  line('fifteen premium tampers — ₹20,090 in one cart, over the ₹5,000 cap.');
   line('This is the product working, not the product failing:');
   line('the refusal is precise, machine-readable, and on the record.');
   line('');
@@ -315,7 +348,7 @@ async function main(): Promise<void> {
       orderId: 'order_flagged_legit_01',
       category: 'coffee',
     },
-    { velocityPerMin: 8, headless: false, accountAgeDays: 400 },
+    { velocityPerMin: 8, headless: true, accountAgeDays: 400 }, // 2 triggers: velocity + headless
     { wire: w, sig },
     {
       now: DEMO_EPOCH,

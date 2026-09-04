@@ -247,7 +247,7 @@ async function main(): Promise<void> {
           amountPaise: '48000',
           category: 'coffee',
         },
-        riskSignals: { velocityPerMin: 7, headless: false, accountAgeDays: 400 },
+        riskSignals: { velocityPerMin: 7, headless: true, accountAgeDays: 400 },
         artifactWire: del.artifact,
         sig: del.sig,
       },

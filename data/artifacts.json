@@ -1,8 +1,8 @@
 {
-  "dl_071f1eec670919110e94cdbd": {
+  "dl_8898585d03504e174a5a7ea6": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_071f1eec670919110e94cdbd",
+      "artifactId": "dl_8898585d03504e174a5a7ea6",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -15,15 +15,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.042Z",
-      "nonce": "7c3079a742d41779a3bb12dd524cfc6a"
+      "issuedAt": "2026-09-04T18:10:49.410Z",
+      "nonce": "539fa455d83839604d66b6b2c5304b3e"
     },
-    "sig": "oHhd+xo9SgpxuCFxRvnf0yg9VIEiusUhTgCTXZdh4kVTeL0enffRDpCMb09t1M0GxB1RkYTMkCd9E0I2t820BQ=="
+    "sig": "UB6fBBDs22z/jQ4nL5yV4kJ2XoiN76rj10GbcrzKgzQ8hvy5dyy22jty0D6vY11CQtWCsKvf1jxTQ2hzWEGADA=="
   },
-  "dl_593273be95bd12b25b0b867f": {
+  "dl_57fa51e506023fbb231f0d1f": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_593273be95bd12b25b0b867f",
+      "artifactId": "dl_57fa51e506023fbb231f0d1f",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -36,15 +36,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.052Z",
-      "nonce": "d5f4a4027936253d637778cb32e777a3"
+      "issuedAt": "2026-09-04T18:10:49.415Z",
+      "nonce": "6fcbca411116933b8a2b90698ed4eeed"
     },
-    "sig": "jVcoo4qpUSGWZ/ZBRAB2d2VovJUEVJ5E5sqkvYktlidvr6lEATSajOc/PV/h1s1xGLDteQNkhoaovqgzLRlKAA=="
+    "sig": "QFtPAGvgXl9hfQsdrcNQYGFQBPpJ8RfwLdFqVNBOcSbTFP0RdixSasWL2c4i5c/y1RkHlftp2PjrUiBp+78KCw=="
   },
-  "dl_7e7ab2640c6a75521bdebb2f": {
+  "dl_e370a522f34fc187333ef774": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_7e7ab2640c6a75521bdebb2f",
+      "artifactId": "dl_e370a522f34fc187333ef774",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -56,15 +56,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.058Z",
-      "nonce": "d6ff57b39e20912feea62e8161ca9a0c"
+      "issuedAt": "2026-09-04T18:10:49.422Z",
+      "nonce": "0f5c4ca4b5ee10b6bc6d27cdd2ee09d9"
     },
-    "sig": "MAM2wOkOYvqvSg3UXGR9XwdI384GmR4UcxRJBMopZrO6Muezk+fQPZny6eDuD7eL6fGMQpwP4OAWm+YaSC2FDg=="
+    "sig": "6ep3jwEAdSOscmF1o42yzD9hXKmCt2nfWzeRxOd1CBwaBfNZef23bi63LqnAYwoKy/xBzGKeBGzFtsj6EeVqCA=="
   },
-  "dl_49df5773ed2f2e0e04c7b819": {
+  "dl_0e06afc182ea9427c9f7525d": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_49df5773ed2f2e0e04c7b819",
+      "artifactId": "dl_0e06afc182ea9427c9f7525d",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -77,15 +77,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.063Z",
-      "nonce": "e96ed6f19067f9a4ef2a1d17b1fbefd4"
+      "issuedAt": "2026-09-04T18:10:49.427Z",
+      "nonce": "b550b9b1bc5a7eb2f410e70509587e22"
     },
-    "sig": "nmYSVdQD5RtdbIMaD9XJ4/AIK3twX0Tm6X12kB66S3TgJ+xaT1u+Ac1HavR5ybocdFt7gsAyPvdVogrLsD/5DA=="
+    "sig": "fcBTtPTR/oCHyQVtOlbytX4/GD9tuHJeye8iV5fAHUlgzutn6nDDSz5E08IY+C/B+4CKTV+fPQp197FQhGEIAw=="
   },
-  "dl_1cf66e8cedf63f60ccbec0b2": {
+  "dl_2b330280b0e50e0d20d8d8f9": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_1cf66e8cedf63f60ccbec0b2",
+      "artifactId": "dl_2b330280b0e50e0d20d8d8f9",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -98,15 +98,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.073Z",
-      "nonce": "226cca51a862091303e65512880ebc28"
+      "issuedAt": "2026-09-04T18:10:49.434Z",
+      "nonce": "920be059c8d5902ad840d5b9a9639770"
     },
-    "sig": "5V6Y4vu1pPNrGLft9wYcrdzKdjpBpTXUsGBq9wPrAKBdNl9Vg3U83iWM1/rIoM6pWXuYMi5LzGO0+2/EhiSYCQ=="
+    "sig": "GJ+QJ+c4X2Vz0ULsglxg9xokZXDmdv3r1wkv5O5q6W9KQObztQObeZry3sayeBxyqr9RdKGPXFhM5pCZLwUzAA=="
   },
-  "dl_d30465b038a9d1fccf3d098d": {
+  "dl_a9e907613e31ff3d08f6c43b": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_d30465b038a9d1fccf3d098d",
+      "artifactId": "dl_a9e907613e31ff3d08f6c43b",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -119,15 +119,15 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.078Z",
-      "nonce": "8db339f6b29073e3f698d7b321dede6b"
+      "issuedAt": "2026-09-04T18:10:49.441Z",
+      "nonce": "20011956d3628f3dd1f1969a97655ce6"
     },
-    "sig": "F4zNzwgIqz8Z8LACq6nSIf49XMBWoFdOm0SoEpMUbN6IzK9NXRweg1KvQT4iBjYCKg9aj49t/+xNX2lWoYdxAQ=="
+    "sig": "CfICnWeKIh6Y8nUV7J2fE2cNlRIV8X+5K1+yg58hrni9Pekqim+uDMXHoDSGoAVJijmyNRVgq57jDoCO0pzNAw=="
   },
-  "dl_32225dc6c41c64c194738d7c": {
+  "dl_642ad6ea0299e3b9107b1e34": {
     "artifact": {
       "version": 1,
-      "artifactId": "dl_32225dc6c41c64c194738d7c",
+      "artifactId": "dl_642ad6ea0299e3b9107b1e34",
       "merchantId": "kadai-and-co",
       "agentId": "agent-007",
       "principal": "human:rupa@upi",
@@ -140,9 +140,9 @@
         "maxAggregatePaise": "2000000",
         "expiresAt": "2099-01-01T00:00:00.000Z"
       },
-      "issuedAt": "2026-09-04T17:25:01.082Z",
-      "nonce": "f5c9d3475a1e0a0ceb30b5d791c1a6f4"
+      "issuedAt": "2026-09-04T18:10:49.448Z",
+      "nonce": "3ce90bf3f2930410ea529d13f8ac758f"
     },
-    "sig": "QT6pEwyfnJaky3FYeFflECHsUcyYCV/A0UoJStk1PygDlMfRwp57OM69ZwEaUTG2Mvb6Z4YmYNcziY84/6XGDw=="
+    "sig": "IQvhnF1kCkBnKk8PafRD7NQIYFXgdlQA04OdRS4BKV/wtx8nfa9M6xLLK+LY2vUWhabuj7p4y29y1CIngJebAA=="
   }
 }
