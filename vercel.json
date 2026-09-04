@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "echo 'serverless deployment — functions build on demand'",
-  "outputDirectory": "api",
+  "buildCommand": "cd web && npm install && npm run build && cp -r dist ../web-dist",
+  "outputDirectory": "web-dist",
   "functions": {
     "api/index.ts": {
       "memory": 1024,
@@ -10,6 +10,16 @@
     }
   },
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/api/index" }
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/health", "destination": "/api/index" },
+    { "source": "/keys", "destination": "/api/index" },
+    { "source": "/catalog", "destination": "/api/index" },
+    { "source": "/delegations", "destination": "/api/index" },
+    { "source": "/gate", "destination": "/api/index" },
+    { "source": "/checkout", "destination": "/api/index" },
+    { "source": "/disputes", "destination": "/api/index" },
+    { "source": "/evidence/(.*)", "destination": "/api/index" },
+    { "source": "/fraud/(.*)", "destination": "/api/index" },
+    { "source": "/ledger", "destination": "/api/index" }
   ]
 }
