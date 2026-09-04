@@ -101,12 +101,18 @@ export interface PurchaseScenario {
     categories: string[];
     maxPerTxnPaise: bigint;
     maxAggregatePaise: bigint;
-    expiresAt: string;
+    /** Expiry window, days from run start (materialized by the runner as
+     *  runStart + days — issueDelegation requires expiresAt > now, so the
+     *  corpus stores offsets, never absolute dates). */
+    expiresInDays: number;
   };
   cart: {
     merchantId: string;
     lines: { sku: string; qty: number; unitPaise: bigint; category: string }[];
   };
+  /** For expired artifacts: the gate is evaluated this many days after run
+   *  start (beyond expiresInDays). 0 = at run start. */
+  evaluatedInDays: number;
   /** For out-of-scope: the violation the generator planted (informational —
    *  the gate's actual reason is what the runner measures). */
   plantedViolation?: OutOfScopeKind;
@@ -121,6 +127,7 @@ export interface DisputeScenario {
   cart: PurchaseScenario['cart'];
   disputeReason: string;
   disputeAmountPaise: bigint;
+  evaluatedInDays: number;
 }
 
 /** A fraud-evaluation scenario: risk engine flags the transaction; the agent
@@ -131,6 +138,7 @@ export interface FlaggedScenario {
   agentId: string;
   principal: string;
   scope: PurchaseScenario['scope'];
+  evaluatedInDays: number;
   tx: {
     merchantId: string;
     amountPaise: bigint;
@@ -175,19 +183,10 @@ function pickCategories(rng: () => number, all: string[]): string[] {
   return shuffled.slice(0, n).sort();
 }
 
-/** Future expiry: 30–365 days out from a fixed epoch. Deterministic batch
- *  clock — the whole corpus is relative to one epoch so runs are comparable. */
-export const BATCH_EPOCH = '2026-09-04T12:00:00.000Z';
-
-function futureExpiry(rng: () => number): string {
-  const days = 30 + Math.floor(rng() * 336); // 30..365
-  return new Date(Date.parse(BATCH_EPOCH) + days * 86_400_000).toISOString();
-}
-
-function pastExpiry(rng: () => number): string {
-  const days = 1 + Math.floor(rng() * 90); // expired 1..90 days ago
-  return new Date(Date.parse(BATCH_EPOCH) - days * 86_400_000).toISOString();
-}
+// The batch clock is relative: the corpus stores expiry offsets in days and
+// the runner materializes them as (run start + offset). This keeps the corpus
+// reproducible (same offsets from the same seed) while respecting
+// issueDelegation's hard rule that expiresAt > issuedAt at mint time.
 
 function line(
   p: CatalogProduct,
@@ -244,8 +243,9 @@ function genInScope(
         categories,
         maxPerTxnPaise: perTxn,
         maxAggregatePaise: agg,
-        expiresAt: futureExpiry(rng),
+        expiresInDays: 30 + Math.floor(rng() * 336), // 30..365
       },
+      evaluatedInDays: 0,
       cart: { merchantId: catalog.merchantId, lines },
     });
   }

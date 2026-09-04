@@ -48,6 +48,7 @@ import {
   BATCH_EPOCH,
   type PurchaseScenario,
   type DisputeScenario,
+  type FlaggedScenario,
   type BatchCorpus,
 } from './gen-batch.js';
 import type { DelegationArtifactWire } from '../src/types.js';
@@ -82,11 +83,11 @@ function signerFor(seed: number, agentId: string): Signer {
   const raw = createHash('sha256')
     .update(`${seed}:${agentId}`, 'utf8')
     .digest();
-  const pkcs8 = Buffer.concat(Buffer.from([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]), raw);
-  const spki = Buffer.concat(Buffer.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]), raw);
+  const pkcs8Prefix = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
+  const spkiPrefix = new Uint8Array([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
   return {
-    privateKey: pkcs8.toString('base64'),
-    publicKey: spki.toString('base64'),
+    privateKey: Buffer.concat([pkcs8Prefix, raw]).toString('base64'),
+    publicKey: Buffer.concat([spkiPrefix, raw]).toString('base64'),
   };
 }
 
@@ -96,12 +97,12 @@ function signerFor(seed: number, agentId: string): Signer {
 
 interface PurchaseOutcome {
   scenario: string;
-  planted?: string;
+  planted: string | null;
   captured: boolean;
   blocked: boolean;
-  reason?: string;
-  amountPaise?: bigint;
-  orderId?: string;
+  reason: string | null;
+  amountPaise: bigint | null;
+  orderId: string | null;
   chainValid: boolean;
 }
 
@@ -150,15 +151,17 @@ function runPurchase(
       type: 'ATTEMPT_BLOCKED',
       artifactId: wire.artifactId,
       verdict: 'BLOCK',
-      reason: v.reason,
+      reason: v.reason, // gate reasons are always present on !ok
     });
     const rows = readLedger(db);
     return {
       scenario: `${s.kind}#${s.index}`,
-      planted: s.plantedViolation,
+      planted: s.plantedViolation ?? null,
       captured: false,
       blocked: true,
       reason: v.reason,
+      amountPaise: null,
+      orderId: null,
       chainValid: verifyChain(rows).valid,
     };
   }
@@ -175,15 +178,17 @@ function runPurchase(
       type: 'ATTEMPT_BLOCKED',
       artifactId: v.artifact.artifactId,
       verdict: 'BLOCK',
-      reason: verdict.reason,
+      reason: verdict.reason ?? 'GATE_UNSPECIFIED',
     });
     const rows = readLedger(db);
     return {
       scenario: `${s.kind}#${s.index}`,
-      planted: s.plantedViolation,
+      planted: s.plantedViolation ?? null,
       captured: false,
       blocked: true,
-      reason: verdict.reason,
+      reason: verdict.reason ?? null,
+      amountPaise: null,
+      orderId: null,
       chainValid: verifyChain(rows).valid,
     };
   }
@@ -211,9 +216,10 @@ function runPurchase(
   const rows = readLedger(db);
   return {
     scenario: `${s.kind}#${s.index}`,
-    planted: s.plantedViolation,
+    planted: s.plantedViolation ?? null,
     captured: true,
     blocked: false,
+    reason: null,
     amountPaise: verdict.totalPaise,
     orderId,
     chainValid: verifyChain(rows).valid,
@@ -296,7 +302,7 @@ function runDispute(s: DisputeScenario, signer: Signer, dataDir: string): Disput
       type: 'ATTEMPT_BLOCKED',
       artifactId: artifact.artifactId,
       verdict: 'BLOCK',
-      reason: v.ok ? verdict.reason : v.reason,
+      reason: v.ok ? (verdict.reason ?? 'GATE_UNSPECIFIED') : v.reason,
     });
   }
 
@@ -464,7 +470,7 @@ async function run(): Promise<void> {
     if (!o.captured) exceptions.push(`${o.scenario}: expected PAYMENT_CAPTURED, got ${o.reason ?? 'unknown'}`);
   }
   for (const o of outOfScopeOutcomes) {
-    if (!o.blocked) exceptions.push(`${o.scenario}: planted ${o.planted}, gate ALLOWED (amount ${rupees(o.amountPaise ?? 0n)})`);
+    if (!o.blocked) exceptions.push(`${o.scenario}: planted ${o.planted}, gate ALLOWED (amount ${o.amountPaise !== null ? rupees(o.amountPaise) : 'unknown'})`);
     else if (o.planted !== undefined && o.reason !== o.planted) {
       exceptions.push(`${o.scenario}: planted ${o.planted}, gate blocked with ${o.reason} (multiple violations present — first-match ordering)`);
     }
@@ -518,7 +524,7 @@ async function run(): Promise<void> {
         scenario: o.scenario,
         captured: o.captured,
         reason: o.reason ?? null,
-        amountPaise: o.amountPaise !== undefined ? o.amountPaise.toString() : null,
+        amountPaise: o.amountPaise !== null ? o.amountPaise.toString() : null,
         orderId: o.orderId ?? null,
         chainValid: o.chainValid,
       })),
@@ -664,7 +670,7 @@ async function pramaanFraudGateRunner(s: FlaggedScenario, signer: Signer): Promi
     artifactWire && sig ? { wire: artifactWire, sig } : null,
     {
       now: BATCH_EPOCH,
-      verifyArtifact: (w, s2, n) => verifyArtifact(w, s2, signer.publicKey, n),
+      verifyArtifact: (w, s2, n) => verifyArtifact(w, s2, signer.publicKey, n ?? BATCH_EPOCH),
       evaluateGate: (w, tx, n) => {
         // passthrough already verified the signature; here we evaluate scope
         // for THIS transaction via the real gate with a single-line cart.
@@ -702,12 +708,13 @@ async function pramaanFraudGateRunner(s: FlaggedScenario, signer: Signer): Promi
         return g.allowed ? { ok: true } : { ok: false, reason: g.reason ?? 'SCOPE_REFUSED' };
       },
       aggregateSpent: (artifactId) => aggregateSpent(db, artifactId),
+      appendLedgerEvent: (event) => appendLedgerEvent(db, event),
     },
   );
 
   appendLedgerEvent(db, {
     type: verdict.action === 'RELEASE' ? 'AGENT_RELEASED' : 'ATTEMPT_BLOCKED',
-    artifactId: artifactWire?.artifactId,
+    ...(artifactWire !== null ? { artifactId: artifactWire.artifactId } : {}),
     orderId: s.tx.orderId,
     amountPaise: s.tx.amountPaise,
     verdict: verdict.action === 'RELEASE' ? 'RELEASE' : 'BLOCK',

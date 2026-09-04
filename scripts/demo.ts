@@ -110,15 +110,11 @@ function wire(artifact: ReturnType<typeof issueDelegation>['artifact']): Delegat
 // deterministic demo signer (same DER-wrap derivation as run-batch)
 function demoSigner(): Signer {
   const raw = createHash('sha256').update('pramaan-demo-signer', 'utf8').digest();
+  const pkcs8Prefix = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]);
+  const spkiPrefix = new Uint8Array([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]);
   return {
-    privateKey: Buffer.concat(
-      Buffer.from([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]),
-      raw,
-    ).toString('base64'),
-    publicKey: Buffer.concat(
-      Buffer.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]),
-      raw,
-    ).toString('base64'),
+    privateKey: Buffer.concat([pkcs8Prefix, raw]).toString('base64'),
+    publicKey: Buffer.concat([spkiPrefix, raw]).toString('base64'),
   };
 }
 
@@ -319,7 +315,7 @@ async function main(): Promise<void> {
     { wire: w, sig },
     {
       now: DEMO_EPOCH,
-      verifyArtifact: (wi, s, n) => verifyArtifact(wi, s, signer.publicKey, n),
+      verifyArtifact: (wi, s, n) => verifyArtifact(wi, s, signer.publicKey, n ?? DEMO_EPOCH),
       evaluateGate: (wi, tx, n) => {
         const g = evaluateGate({
           artifact: {
@@ -347,6 +343,7 @@ async function main(): Promise<void> {
         return g.allowed ? { ok: true } : { ok: false, reason: g.reason ?? 'SCOPE_REFUSED' };
       },
       aggregateSpent: (id) => aggregateSpent(db, id),
+      appendLedgerEvent: (event) => appendLedgerEvent(db, event),
     },
   );
   appendLedgerEvent(db, {
@@ -372,14 +369,14 @@ async function main(): Promise<void> {
     null,
     {
       now: DEMO_EPOCH,
-      verifyArtifact: (wi, s, n) => verifyArtifact(wi, s, signer.publicKey, n),
+      verifyArtifact: (wi, s, n) => verifyArtifact(wi, s, signer.publicKey, n ?? DEMO_EPOCH),
       evaluateGate: () => ({ ok: false, reason: 'NO_PROOF' }),
       aggregateSpent: () => 0n,
+      appendLedgerEvent: (event) => appendLedgerEvent(db, event),
     },
   );
   appendLedgerEvent(db, {
     type: 'ATTEMPT_BLOCKED',
-    artifactId: null,
     orderId: 'order_flagged_mal_01',
     amountPaise: 48_000n,
     verdict: 'BLOCK',
