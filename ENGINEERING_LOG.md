@@ -108,3 +108,61 @@ threshold matrix (velocity 5/6, age 29/30/31, headless t/f, 0/1/2/3-of-3), and
 route-level ledger discipline via fastify inject (risk-clear writes nothing;
 delegation-proven release writes exactly one AGENT_RELEASED row; every BLOCK
 writes exactly one ATTEMPT_BLOCKED row).
+
+## S3 (EVIDENCE) — Layer 2 dossier landed: decisions worth knowing
+
+**Template location:** `src/templates/evidence.ts` (the §7-sanctioned TS-function
+form; no template engine, single location).
+
+**The footer digest cannot be self-referential.** A footer that displays
+"sha256 of the full HTML" containing that digest is impossible in principle —
+the digest would have to be its own preimage. Resolved honestly with TWO
+well-defined digests: the API returns `sha256` of the delivered bytes
+(verifiable by `shasum -a 256` — proven in tests), while the visible footer
+seal is the sha256 of the document **with the seal field zeroed** (64 zeroes),
+worded precisely and recomputable from the file alone. Both are stated in the
+footer. Reported to the Orchestrator as a §5 wording defect ("SHA-256 of the
+full rendered HTML" in-footer is unsatisfiable as literally written).
+
+**Span verification vs. `verifyChain(rows)`:** S1's `verifyChain` assumes the
+rows array starts at genesis, so it cannot verify a per-delegation span of an
+interleaved ledger (span row N links globally to rows of OTHER delegations).
+Exhibit E therefore (a) runs S1's `verifyChain` over the FULL ledger for the
+global proof, and (b) independently recomputes each span row's selfHash
+(mirroring the §2.2 wire-form hash exactly — proven identical in tests) and
+checks linkage to the true global predecessor via seq-1 lookup. Both results
+are shown. `recomputeSelfHash` is exported for that second opinion.
+
+**Sidecar shapes (S2 must align):**
+- `data/artifacts.json`: `{ [delegationId]: { artifact: DelegationArtifactWire, sig: string } }`
+  — written at issuance by `/delegations`. Authoritative source for Exhibit A
+  scope + cover merchant/agent/principal.
+- `data/disputes.json`: per §5.1 `[{ disputeId, delegationId, amountPaise (string), reason, openedAt }]`
+  — read for dispute metadata; ledger `DISPUTE_OPENED` row is the fallback.
+Both tolerated when absent (graceful degradation, honestly worded in-pack).
+
+**Exhibit D category data:** attempt rows must carry category info for the
+per-line scope check. The structured reason
+`{"categories":["coffee"],"skus":["KC-COF-CHIK-250"],"qty":2}` is parsed
+(tolerantly: JSON, bare category token, gate codes pass through as-is).
+`DELEGATION_ISSUED` reason may carry `{"scope":{...},"issuedAt":...}` as the
+fallback when the artifacts sidecar is absent; when neither exists the pack
+says "artifact details unavailable" and marks per-line checks `unknown`
+rather than inventing data. Rows without category/amount show `unknown`, not
+silently-passing checks.
+
+**Money formatting:** `(paise/100n)` at the render boundary only; `Intl.NumberFormat('en-IN')`
+with 0 fraction digits formats the rupee integer part (lakh grouping), paise
+appended as `.padStart(2,'0')`. Tests prove ₹12,34,567.89 for 123456789n paise.
+
+**Timestamps:** IST display everywhere (`Asia/Kolkata` via `toLocaleString`),
+UTC ISO alongside in every details line. Masthead: "PRAMAAN — DELEGATION
+EVIDENCE PACK" (CSS-uppercased), "EXHIBITS A–E", "CONFIDENTIAL — DISPUTE
+REPRESENTMENT".
+
+**Test proof:** 8/8 green — full-purchase dossier with all exhibits + computed
+verdict sentence + external-shasum-matching digest; out-of-scope category
+honesty; sidecar-absent fallback + honest-unavailable path; retroactive-edit
+(tampered SQL) chain break detection; self-hash mirror identity; en-IN
+formatting matrix; reason-parser tolerance; interleaved-delegations span
+verification. Full suite at landing: 87/87 across 8 files.
