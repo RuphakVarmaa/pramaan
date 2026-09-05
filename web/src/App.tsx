@@ -75,10 +75,18 @@ function Masthead({ mockMode, setMockMode }: { mockMode: boolean; setMockMode: (
       <span className="tagline">a desk where a human supervises machine spending</span>
       <span className="spacer" />
       <div className="meta">
-        <span><span className="dot">●</span> RAZORPAY TEST MODE</span>
-        <span>KADAI &amp; CO. · INDIRANAGAR</span>
-        <button className="mode-toggle" onClick={() => setMockMode(!mockMode)} title="Toggle mock / real API">
-          {mockMode ? 'MOCK ENGINE' : 'LIVE API'}
+        <span>
+          <span className={'dot' + (mockMode ? '' : ' live')} aria-hidden="true">●</span>{' '}
+          {mockMode ? 'MOCK ENGINE · RAZORPAY TEST MODE' : 'LIVE API CONNECTED'}
+        </span>
+        <span className="hide-sm">KADAI &amp; CO. · INDIRANAGAR</span>
+        <button
+          className="mode-toggle"
+          onClick={() => setMockMode(!mockMode)}
+          aria-pressed={mockMode}
+          title={mockMode ? 'Switch to the live API' : 'Switch back to the mock engine'}
+        >
+          {mockMode ? 'GO LIVE' : 'USE MOCK'}
         </button>
       </div>
     </header>

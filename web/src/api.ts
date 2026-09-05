@@ -182,7 +182,7 @@ export function formatIST(iso: string): string {
 // MOCK IMPLEMENTATION — same state machine as the real API
 // ---------------------------------------------------------------------------
 
-import catalog from './data/catalog.json';
+import catalog from './data/catalog.json' with { type: 'json' };
 
 interface Product {
   sku: string;

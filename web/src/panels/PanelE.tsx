@@ -9,6 +9,8 @@ export function PanelE({ shared }: { shared: SharedState }) {
   const [withArtifact, setWithArtifact] = useState(true);
   const [verdict, setVerdict] = useState<FraudVerdict | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -17,11 +19,16 @@ export function PanelE({ shared }: { shared: SharedState }) {
       try {
         const f = await api.listFraudFlags();
         if (alive) {
+          setLoadError(null);
           setFlags(f);
-          setPickedFlag((p) => (p && f.some((x) => x.flagId === p) ? p : (f[0]?.flagId ?? null)));
+          setPickedFlag((p) => {
+            const stillThere = p && f.some((x) => x.flagId === p);
+            if (!stillThere) setVerdict(null); // selection changed — old verdict is stale
+            return stillThere ? p : (f[0]?.flagId ?? null);
+          });
         }
-      } catch {
-        /* real mode before backend is up — flags stay empty */
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'flag feed unavailable — real mode needs the API up');
       }
     };
     void load();
@@ -35,10 +42,13 @@ export function PanelE({ shared }: { shared: SharedState }) {
   async function runGate() {
     if (!pickedFlag) return;
     setBusy(true);
+    setError(null);
     try {
       const v = await api.runFraudGate({ flagId: pickedFlag, withArtifact });
       setVerdict(v);
       await refreshLedger();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fraud gate evaluation failed');
     } finally {
       setBusy(false);
     }
@@ -51,8 +61,11 @@ export function PanelE({ shared }: { shared: SharedState }) {
         <h2>Risk Desk</h2>
         <span className="sub">fraud pass-through</span>
       </header>
-      <div className="panel-body risk-body">
-        {flags.length === 0 && (
+      <div className="panel-body risk-body" aria-busy={busy}>
+        {loadError && (
+          <p className="form-error" role="alert">✕ {loadError}</p>
+        )}
+        {flags.length === 0 && !loadError && (
           <div style={{ color: 'var(--tx-2)', fontSize: 11 }}>
             no flagged transactions in the feed — bot-like Razorpay test payments will appear here
           </div>
@@ -61,7 +74,8 @@ export function PanelE({ shared }: { shared: SharedState }) {
           <button
             type="button"
             key={f.flagId}
-            className="flag-item"
+            className={'flag-item' + (f.flagId === pickedFlag ? ' selected' : '')}
+            aria-pressed={f.flagId === pickedFlag}
             style={{
               cursor: 'pointer',
               textAlign: 'left',
@@ -94,16 +108,25 @@ export function PanelE({ shared }: { shared: SharedState }) {
         ))}
         <div className="risk-controls">
           <label>
-            <input type="checkbox" checked={withArtifact} onChange={(e) => setWithArtifact(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={withArtifact}
+              disabled={busy}
+              onChange={(e) => setWithArtifact(e.target.checked)}
+            />
             valid delegation artifact presented
           </label>
+          <span className="helper-text">the agent presents its signed mandate for this exact transaction</span>
           <span style={{ flex: 1 }} />
           <button className="btn" disabled={busy || !pickedFlag} onClick={runGate}>
             {busy ? 'Evaluating…' : 'Run Pramaan Gate'}
           </button>
         </div>
+        {error && (
+          <p className="form-error" role="alert">✕ {error}</p>
+        )}
         {verdict && (
-          <div className={'release-seal' + (verdict.decision === 'BLOCK' ? ' blocked' : '')}>
+          <div className={'release-seal' + (verdict.decision === 'BLOCK' ? ' blocked' : '')} role="status" aria-live="polite">
             {verdict.decision === 'RELEASE' ? (
               <>
                 {/* original seal motif */}
@@ -115,7 +138,7 @@ export function PanelE({ shared }: { shared: SharedState }) {
                 <span className="txt">
                   RELEASED
                   <br />
-                  <span style={{ fontSize: 9, color: 'var(--verd-green)', opacity: 0.8 }}>{verdict.proof}</span>
+                  <span className="proof-text proof-ok">{verdict.proof}</span>
                 </span>
               </>
             ) : (
@@ -127,7 +150,7 @@ export function PanelE({ shared }: { shared: SharedState }) {
                 <span className="txt">
                   BLOCKED
                   <br />
-                  <span style={{ fontSize: 9, color: 'var(--verd-amber)', opacity: 0.8 }}>{verdict.proof}</span>
+                  <span className="proof-text proof-no">{verdict.proof}</span>
                 </span>
               </>
             )}

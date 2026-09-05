@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { SharedState } from '../App';
 import { formatINR, formatIST, type GateVerdict } from '../api';
-import catalog from '../data/catalog.json';
+import catalog from '../data/catalog.json' with { type: 'json' };
 
 interface Product {
   sku: string;
@@ -27,6 +27,7 @@ export function PanelB({ shared }: { shared: SharedState }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [verdict, setVerdict] = useState<GateVerdict | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const selected = artifacts.find((a) => a.artifactId === artifactId) ?? artifacts[0];
   const effectiveId = selected?.artifactId ?? '';
@@ -46,15 +47,26 @@ export function PanelB({ shared }: { shared: SharedState }) {
     [cartLines],
   );
 
-  const setQty = (sku: string, d: number) =>
+  const setQty = (sku: string, d: number) => {
+    setVerdict(null); // stale verdict must not survive a cart change
+    setError(null);
     setCart((prev) => {
       const next = Math.max(0, (prev[sku] ?? 0) + d);
       return { ...prev, [sku]: next };
     });
+  };
+
+  const setQtyExact = (sku: string, raw: string) => {
+    setVerdict(null);
+    setError(null);
+    const n = Math.max(0, Math.min(999, parseInt(raw, 10) || 0));
+    setCart((prev) => ({ ...prev, [sku]: n }));
+  };
 
   async function attempt() {
     if (!effectiveId || cartLines.length === 0) return;
     setBusy(true);
+    setError(null);
     try {
       const v = await api.attemptPayment({
         artifactId: effectiveId,
@@ -62,6 +74,8 @@ export function PanelB({ shared }: { shared: SharedState }) {
       });
       setVerdict(v);
       await refreshLedger();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gate evaluation failed');
     } finally {
       setBusy(false);
     }
@@ -109,11 +123,20 @@ export function PanelB({ shared }: { shared: SharedState }) {
                     </div>
                     <div className="p-price">{formatINR(String(p.unitPaise))}</div>
                     <div className="stepper" data-sku={p.sku}>
-                      <button type="button" aria-label={`remove ${p.name}`} onClick={() => setQty(p.sku, -1)}>
+                      <button type="button" aria-label={`remove one ${p.name}`} onClick={() => setQty(p.sku, -1)} disabled={(cart[p.sku] ?? 0) === 0}>
                         −
                       </button>
-                      <span className="qty">{cart[p.sku] ?? 0}</span>
-                      <button type="button" aria-label={`add ${p.name}`} onClick={() => setQty(p.sku, +1)}>
+                      <input
+                        className="qty"
+                        type="number"
+                        min={0}
+                        max={999}
+                        inputMode="numeric"
+                        aria-label={`Quantity of ${p.name}`}
+                        value={cart[p.sku] ?? 0}
+                        onChange={(e) => setQtyExact(p.sku, e.target.value)}
+                      />
+                      <button type="button" aria-label={`add one ${p.name}`} onClick={() => setQty(p.sku, +1)} disabled={(cart[p.sku] ?? 0) >= 999}>
                         +
                       </button>
                     </div>
@@ -131,6 +154,9 @@ export function PanelB({ shared }: { shared: SharedState }) {
         <button className="btn primary block" disabled={busy || !effectiveId || cartLines.length === 0} onClick={attempt}>
           {busy ? 'Gate evaluating…' : 'Attempt Payment →'}
         </button>
+        {error && (
+          <p className="form-error" role="alert">✕ {error}</p>
+        )}
         {verdict && (
           <VerdictCard verdict={verdict} />
         )}

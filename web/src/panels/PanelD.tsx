@@ -19,6 +19,7 @@ export function PanelD({ shared }: { shared: SharedState }) {
   const [disputeOpened, setDisputeOpened] = useState(false);
   const [evidence, setEvidence] = useState<{ html: string; disputeId: string; sha256: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (pickedSeq === null && capturables.length > 0) setPickedSeq(capturables[0].seq);
@@ -33,11 +34,14 @@ export function PanelD({ shared }: { shared: SharedState }) {
   async function openDispute() {
     if (pickedSeq == null) return;
     setBusy(true);
+    setError(null);
     try {
       await api.openDispute({ ledgerSeq: pickedSeq, reason });
       setDisputeOpened(true);
       setEvidence(null);
       await refreshLedger();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Dispute could not be opened');
     } finally {
       setBusy(false);
     }
@@ -46,10 +50,13 @@ export function PanelD({ shared }: { shared: SharedState }) {
   async function generateEvidence() {
     if (pickedSeq == null) return;
     setBusy(true);
+    setError(null);
     try {
       const pack = await api.generateEvidence({ ledgerSeq: pickedSeq });
       setEvidence(pack);
       await refreshLedger();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Evidence pack generation failed');
     } finally {
       setBusy(false);
     }
@@ -89,6 +96,9 @@ export function PanelD({ shared }: { shared: SharedState }) {
           </select>
         </div>
         <div className="two-col">
+          {error && (
+            <p className="form-error" role="alert">✕ {error}</p>
+          )}
           <button className="btn" disabled={busy || pickedSeq == null || disputeOpened} onClick={openDispute}>
             Open Dispute
           </button>

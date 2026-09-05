@@ -674,3 +674,203 @@ select option { background: var(--ink-2); color: var(--tx-0); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================================
+   UPGRADE LAYER — DeepSeek v4 Flash-reviewed fixes (2026-09-05)
+   Error/success banners, accessible hash buttons, readable proof text,
+   rupee-input hints, focus-visible everywhere, live stamp, empty states.
+   ========================================================================== */
+
+/* --- form feedback banners --- */
+.form-error,
+.form-ok {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  border: 1px solid;
+}
+.form-error {
+  color: #ffb4a9;
+  border-color: rgba(255, 107, 87, 0.35);
+  background: rgba(120, 30, 20, 0.18);
+}
+.form-ok {
+  color: #7be0a7;
+  border-color: rgba(61, 214, 140, 0.3);
+  background: rgba(20, 60, 40, 0.16);
+}
+
+/* --- input unit hints + disabled reasons --- */
+.hint {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--tx-2);
+  letter-spacing: 0.04em;
+}
+.disabled-why {
+  margin-top: 6px;
+  text-align: center;
+  color: var(--tx-2);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* --- chip fieldset (semantic grouping) --- */
+.chip-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.chip-fieldset legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+/* --- ledger: accessible hash toggle + empty state --- */
+.hash-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: inherit;
+}
+.hash-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.hash-cell .full-hash {
+  pointer-events: none;
+}
+.hash-btn:focus-visible + .full-hash,
+.hash-cell:focus-within .full-hash {
+  display: block;
+}
+.ledger-empty {
+  padding: 30px 14px;
+  color: var(--tx-2);
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+/* --- ledger header live stamp --- */
+.live-stamp {
+  font-size: 9.5px;
+  color: var(--tx-2);
+  letter-spacing: 0.1em;
+  margin-left: auto;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+.live-stamp::before {
+  content: '● ';
+  color: var(--verd-green);
+  font-size: 8px;
+  vertical-align: 1px;
+}
+
+/* --- proof text (the verdict's why — readable, not 9px) --- */
+.proof-text {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 1;
+  letter-spacing: 0.02em;
+}
+.proof-ok { color: #8fe7b6; }
+.proof-no { color: #e8c98a; }
+
+/* --- risk desk helper text --- */
+.helper-text {
+  display: block;
+  font-size: 10px;
+  color: var(--tx-2);
+  letter-spacing: 0.03em;
+  margin-top: 3px;
+}
+
+/* --- global keyboard focus (visible, consistent) --- */
+.btn:focus-visible,
+.chip:focus-visible,
+.hash-btn:focus-visible,
+.stepper button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.flag-item:focus-visible,
+.copy-btn:focus-visible,
+.mode-toggle:focus-visible {
+  outline: 2px solid var(--verd-cyan, #5fd4e0);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- stepper input (typeable quantity) --- */
+.stepper input.qty {
+  width: 44px;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  color: var(--tx-1, #dfe7ee);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 2px 0;
+}
+.stepper input.qty::-webkit-outer-spin-button,
+.stepper input.qty::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stepper input.qty[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* --- reduced motion (respect the user) --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* hash full view: open state (button-driven, not hover-only) */
+.hash-cell .full-hash.open {
+  display: block;
+}
+
+/* integrity footer: three honest states, readable contrast */
+.integrity {
+  letter-spacing: 0.14em;
+}
+.integrity.verified {
+  color: #7be0a7;
+}
+.integrity.broken {
+  color: #ffb4a9;
+}
+.integrity.unknown {
+  color: var(--tx-2);
+}
+
+/* selected flag item (aria-pressed) */
+.flag-item.selected {
+  background: rgba(97, 198, 217, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(97, 198, 217, 0.35);
+}
