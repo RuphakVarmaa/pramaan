@@ -26,6 +26,7 @@ import type {
 } from './types.js';
 import { artifactToWire } from './types.js';
 import type { DatabaseSync } from 'node:sqlite';
+import { registerConsoleRoutes } from './routes/console.js';
 
 // ---------------------------------------------------------------------------
 // Ledger seam. S1 owns src/ledger.ts: appendLedgerEvent(db, event) /
@@ -166,6 +167,12 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   // The ONLY clock read in the app, at the route layer — handed to pure fns.
   const now = () => new Date().toISOString();
+
+  // Console bridge: serves the web/ client's exact contract on /api/* using
+  // the real modules (mock-first client finally goes live end-to-end).
+  if (deps.db) {
+    void registerConsoleRoutes(app, deps, deps.db, now);
+  }
 
   app.get('/health', async () => ({
     ok: true,
