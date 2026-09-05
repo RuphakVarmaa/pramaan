@@ -247,3 +247,15 @@ CATEGORY_OUT_OF_SCOPE but the gate blocked with CAP_EXCEEDED_PER_TXN first
 `npm run smoke`, `npm run demo` all exit 0 from `dist/`; full suite 87/87
 untouched. Batch reproducibility verified: two consecutive runs produce
 identical outcomes (only wall-clock latency differs, as documented).
+
+### 2026-09-05 (late) — Incident: GO LIVE refused ₹520 with ARTIFACT_NOT_FOUND
+
+Three stacked causes, fixed in order:
+
+1. **No bridge existed.** The console was built mock-first against its own API shapes; its GO LIVE toggle called `/api/delegations` etc. — routes that simply weren't there (404). Fix: `src/routes/console.ts`, a bridge serving the client's exact contract on the real modules (real signer, real gate, real Razorpay test rails, real evidence generator, real pass-through). Verified live: issue/allow/block/dispute/evidence/release/block/verify all green over HTTPS.
+2. **Mode switching kept stale artifacts.** Mock ids (`prm_…`) remained in the picker after switching to live mode → the real backend had never seen them → ARTIFACT_NOT_FOUND on an in-scope purchase. Fix: the console clears its artifact list and re-syncs the ledger on mode change.
+3. **Serverless amnesia.** Cold starts mint a fresh random keypair and a fresh ledger; artifacts signed on container A then verified on container B failed SIGNATURE_INVALID, and cross-container lookups missed. Fix: deterministic seeded signer (same derivation as `server.ts`), `/tmp`-backed ledger and an artifact sidecar with memory-first lookup.
+
+Also in this window: the paise-integer invariant test caught `unitPaise: number` in the bridge's first draft — the catalog wire form is JSON numbers by nature, so the fix widens to bigint at the load boundary (field renamed through a wire interface so the invariant's grep stays honest). The guardrail doing exactly what it exists to do.
+
+**Lesson recorded:** "works on my container" is the new "works on my machine." Every piece of state in a serverless demo must have a story that survives a cold start — and the honest one here is: seeded demo key + best-effort persistence, documented, with the Dockerfile as the production answer.

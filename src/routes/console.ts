@@ -25,6 +25,8 @@ import { generateEvidencePack, appendEvidenceGenerated } from '../evidence.js';
 import { newDisputeId } from '../razorpay.js';
 import catalogJson from '../../catalog.json' with { type: 'json' };
 import type { DatabaseSync } from 'node:sqlite';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type {
   DelegationArtifactWire,
   LedgerRow,
@@ -63,6 +65,27 @@ const g = globalThis as unknown as {
 g.__consoleArtifacts ??= new Map();
 g.__consoleDisputes ??= [];
 
+/** Memory first, then the sidecar — so artifacts survive container swaps. */
+function loadArtifact(id: string): { wire: DelegationArtifactWire; sig: string } | undefined {
+  const mem = g.__consoleArtifacts!.get(id);
+  if (mem) return mem;
+  try {
+    const artifactsPath = join(DATA_DIR, 'artifacts.json');
+    if (existsSync(artifactsPath)) {
+      const all = JSON.parse(readFileSync(artifactsPath, 'utf8')) as Record<string, { artifact: DelegationArtifactWire; sig: string }>;
+      const hit = all[id];
+      if (hit) {
+        const restored = { wire: hit.artifact, sig: hit.sig };
+        g.__consoleArtifacts!.set(id, restored);
+        return restored;
+      }
+    }
+  } catch {
+    // sidecar read failure — fall through
+  }
+  return undefined;
+}
+
 const AGENT_PERSONAS: Record<string, { persona: string; model: string }> = {
   'agent-007': { persona: 'Shaheen', model: 'GPT-class assistant' },
   default: { persona: 'Shopping Agent', model: 'assistant' },
@@ -83,7 +106,10 @@ function consoleLedgerRow(r: LedgerRow) {
   };
 }
 
+let DATA_DIR = '/tmp/pramaan-data';
+
 export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: DatabaseSync, now: () => string): void {
+  DATA_DIR = (deps.env.PRAMAAN_DATA_DIR as string | undefined) ?? (deps.env.PRAMAAN_DB ? dirname(deps.env.PRAMAAN_DB) : undefined) ?? (deps.dataDir as string | undefined) ?? '/tmp/pramaan-data';
   const append = (e: LedgerAppendEvent) =>
     appendLedgerEvent(db, {
       type: e.type,
@@ -156,12 +182,22 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
       }),
     });
 
-    g.__consoleArtifacts!.set(issued.artifact.artifactId, {
-      wire: JSON.parse(
-        JSON.stringify(issued.artifact, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
-      ) as unknown as DelegationArtifactWire,
-      sig: issued.sig,
-    });
+    const wire = JSON.parse(
+      JSON.stringify(issued.artifact, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
+    ) as unknown as DelegationArtifactWire;
+    g.__consoleArtifacts!.set(issued.artifact.artifactId, { wire, sig: issued.sig });
+    // sidecar = shared storage: survives serverless container swaps
+    try {
+      const artifactsPath = join(DATA_DIR, 'artifacts.json');
+      mkdirSync(dirname(artifactsPath), { recursive: true });
+      const existing = existsSync(artifactsPath)
+        ? (JSON.parse(readFileSync(artifactsPath, 'utf8')) as Record<string, unknown>)
+        : {};
+      existing[issued.artifact.artifactId] = { artifact: wire, sig: issued.sig };
+      writeFileSync(artifactsPath, JSON.stringify(existing, null, 2) + '\n');
+    } catch {
+      // sidecar best-effort; in-memory map still serves this container
+    }
 
     const persona = AGENT_PERSONAS[b.agentId] ?? AGENT_PERSONAS.default!;
     return {
@@ -184,7 +220,7 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
   // ---- POST /api/gate — attempt payment, console shape ----
   app.post('/api/gate', async (req, reply) => {
     const b = req.body as { artifactId?: string; cart?: Array<{ sku: string; qty: number }> };
-    const stored = b?.artifactId ? g.__consoleArtifacts!.get(b.artifactId) : undefined;
+    const stored = b?.artifactId ? loadArtifact(b.artifactId) : undefined;
     if (!stored || !b?.cart?.length) {
       return reply.code(400).send({ error: 'invalid_request', reason: 'unknown artifactId or empty cart' });
     }
@@ -340,7 +376,7 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
     const risk = evaluateRisk(signals); // flagged by design
 
     if (b?.withArtifact && target.artifactId) {
-      const stored = g.__consoleArtifacts!.get(target.artifactId);
+      const stored = loadArtifact(target.artifactId);
       if (stored) {
         const verdict = await pramaanFraudGate(
           {

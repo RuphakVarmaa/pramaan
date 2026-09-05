@@ -14,6 +14,8 @@
 import { buildApp } from '../src/app.js';
 import type { AppDeps } from '../src/app.js';
 import { generateEd25519KeyPair } from '../src/crypto.js';
+import { createHash, createPrivateKey, createPublicKey, randomBytes } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
 import { openLedger, appendLedgerEvent, readLedger, aggregateSpent } from '../src/ledger.js';
 import { issueDelegation, verifyArtifact } from '../src/artifact.js';
 import { pramaanFraudGate } from '../src/passthrough.js';
@@ -22,6 +24,24 @@ import Fastify from 'fastify';
 import type { DatabaseSync } from 'node:sqlite';
 
 let cachedApp: ReturnType<typeof buildApp> | null = null;
+
+/**
+ * Deterministic demo keypair: seed -> SHA-256 -> Ed25519 (RFC 8410 PKCS#8 wrap).
+ * Every container derives the SAME key, so artifacts signed anywhere verify
+ * everywhere via the shared sidecar. Production uses a KMS (documented).
+ */
+function stableDemoKeypair(seed: string | undefined): ReturnType<typeof generateEd25519KeyPair> {
+  const raw =
+    seed && seed.length > 0
+      ? createHash('sha256').update(seed, 'utf8').digest()
+      : createHash('sha256').update(randomBytes(32)).digest();
+  const pkcs8 = Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), raw]);
+  const priv = createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' });
+  return {
+    publicKey: createPublicKey(priv).export({ format: 'der', type: 'spki' }).toString('base64'),
+    privateKey: pkcs8.toString('base64'),
+  };
+}
 
 // Per-warm-container state: one keypair, one in-memory ledger. Cold starts
 // mint fresh ones — the demo console re-issues its delegation each session,
@@ -34,8 +54,15 @@ const g = globalThis as unknown as {
 function getApp() {
   if (cachedApp) return cachedApp;
 
-  g.__pramaanDb ??= openLedger(':memory:');
-  g.__pramaanKeys ??= generateEd25519KeyPair();
+  g.__pramaanDb ??= (() => {
+    try {
+      mkdirSync('/tmp/pramaan-data', { recursive: true });
+      return openLedger('/tmp/pramaan-data/pramaan.db');
+    } catch {
+      return openLedger(':memory:'); // fall back if /tmp is unavailable
+    }
+  })();
+  g.__pramaanKeys ??= stableDemoKeypair(process.env.PRAMAAN_SIGNING_SEED);
 
   const db = g.__pramaanDb;
   const kp = g.__pramaanKeys;

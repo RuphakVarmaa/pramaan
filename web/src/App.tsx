@@ -34,6 +34,11 @@ export function App() {
   const apiRef = useRef<PramaanApi>(createApi('mock'));
   useEffect(() => {
     apiRef.current = createApi(mockMode ? 'mock' : 'real');
+    // artifacts from the previous mode are meaningless in the new one
+    // (mock ids prm_… don't exist in the real backend and vice versa)
+    setArtifacts([]);
+    setLedger([]);
+    void apiRef.current.listLedger().then(setLedger).catch(() => {});
   }, [mockMode]);
 
   const refreshLedger = useCallback(async () => {
