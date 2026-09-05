@@ -874,3 +874,310 @@ select:focus-visible,
   background: rgba(97, 198, 217, 0.08);
   box-shadow: inset 0 0 0 1px rgba(97, 198, 217, 0.35);
 }
+
+/* ============================================================================
+   CLEAN SHELL — v3 layout: one focused view at a time + left nav.
+   Whitespace is the design. No congestion: the stage renders exactly one
+   panel, full width, with a comfortable measure and breathing room.
+   ========================================================================== */
+
+.shell {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+}
+
+/* --- side navigation --- */
+.sidenav {
+  border-right: 1px solid var(--line-0);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: linear-gradient(180deg, rgba(22, 29, 36, 0.35), transparent 40%);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--tx-1);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--tx-0);
+}
+.nav-item.active {
+  background: rgba(97, 198, 217, 0.1);
+  color: var(--tx-0);
+  box-shadow: inset 2px 0 0 var(--verd-cyan);
+}
+.nav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.nav-label {
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.nav-sub {
+  font-size: 10.5px;
+  color: var(--tx-2);
+  letter-spacing: 0.03em;
+}
+.nav-foot {
+  margin-top: auto;
+  padding: 14px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nav-count {
+  font-size: 10.5px;
+  color: var(--tx-1);
+  letter-spacing: 0.05em;
+}
+.nav-note {
+  font-size: 9.5px;
+  color: var(--tx-3);
+  letter-spacing: 0.05em;
+}
+
+/* --- the stage: one panel, full width, comfortable --- */
+.stage {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 36px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.stage > .panel {
+  max-width: 860px; /* readable measure — long lines are congestion too */
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* panels in the stage get generous internal spacing */
+.stage .panel > header {
+  padding: 18px 24px 14px;
+  gap: 14px;
+}
+.stage .panel .panel-body {
+  padding: 22px 24px 26px;
+}
+
+/* masthead: calmer, spaced */
+.masthead .word {
+  font-size: 21px;
+}
+.masthead .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--tx-1);
+  padding: 5px 10px;
+  border: 1px solid var(--line-0);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* continue button breathing room */
+.continue-btn {
+  margin-top: 14px;
+}
+
+/* --- responsive: narrow → nav collapses to a horizontal scroller --- */
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidenav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-0);
+    padding: 10px 12px;
+  }
+  .nav-item {
+    flex: none;
+    width: auto;
+    padding: 8px 12px;
+  }
+  .nav-sub,
+  .nav-foot {
+    display: none;
+  }
+  .nav-item.active {
+    box-shadow: inset 0 -2px 0 var(--verd-cyan);
+  }
+  .stage {
+    padding: 18px 16px 40px;
+  }
+}
+
+@media (max-width: 620px) {
+  .tagline {
+    display: none;
+  }
+  .stage .panel > header {
+    padding: 14px 16px 10px;
+  }
+  .stage .panel .panel-body {
+    padding: 16px 16px 20px;
+  }
+}
+
+/* boolean/null token tint for the artifact JSON */
+.tok-bool {
+  color: var(--verd-amber);
+}
+
+/* cart line-item review (what am I actually buying?) */
+.cart-lines {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  border-top: 1px solid var(--line-0);
+}
+.cart-lines li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--line-0);
+  font-size: 11.5px;
+}
+.cart-lines .cl-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tx-1);
+}
+.cart-lines .cl-qty {
+  color: var(--tx-2);
+  font-size: 10.5px;
+}
+.cart-lines .cl-amt {
+  color: var(--tx-0);
+}
+
+/* selected-transaction summary before disputing */
+.picked-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-0);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 12px;
+}
+.picked-summary .ps-lbl {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--tx-2);
+}
+.picked-summary .ps-main {
+  font-size: 13px;
+  color: var(--tx-0);
+}
+.picked-summary .ps-sub {
+  font-size: 10.5px;
+  color: var(--tx-2);
+}
+
+/* chain-status three states */
+.chain-status.broken {
+  color: #ffb4a9;
+}
+.chain-status.unknown {
+  color: var(--tx-2);
+}
+
+/* flag feed: scrollable so long feeds never bury the controls */
+.flag-feed {
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+/* grouped action buttons */
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.actions-row .btn {
+  flex: 1 1 auto;
+  min-width: 160px;
+}
+
+/* ledger header: title row + grouped status/actions row */
+.ledger-panel header,
+.panel-c > header {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.hdr-line {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 100%;
+}
+.hdr-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* uniform ledger rows: expanded hashes scroll inside a capped detail area */
+.hash-cell .full-hash.open {
+  display: block;
+  max-width: 420px;
+  max-height: 96px;
+  overflow: auto;
+  white-space: pre;
+  line-height: 1.45;
+}
+
+/* memo cell: never stretch the table */
+.memo-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* submit-wrap keeps hover-title alive on disabled buttons */
+.submit-wrap {
+  display: block;
+  cursor: help;
+}
+.submit-wrap .btn {
+  cursor: pointer;
+}

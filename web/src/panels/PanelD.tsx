@@ -2,20 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SharedState } from '../App';
 import { formatINR } from '../api';
 
-const DISPUTE_REASONS = [
-  'UNAUTHORIZED_TRANSACTION',
-  'SERVICE_NOT_RECEIVED',
-  'DUPLICATE_CHARGE',
-  'AMOUNT_MISMATCH',
-  'AGENT_EXCEEDED_SCOPE',
-] as const;
+const DISPUTE_REASONS: ReadonlyArray<{ code: string; label: string }> = [
+  { code: 'UNAUTHORIZED_TRANSACTION', label: 'I never authorized this transaction' },
+  { code: 'SERVICE_NOT_RECEIVED', label: 'The goods or service was never delivered' },
+  { code: 'DUPLICATE_CHARGE', label: 'I was charged more than once' },
+  { code: 'AMOUNT_MISMATCH', label: 'The charged amount is wrong' },
+  { code: 'AGENT_EXCEEDED_SCOPE', label: 'My agent spent beyond what I allowed' },
+];
 
 export function PanelD({ shared }: { shared: SharedState }) {
   const { api, ledger, refreshLedger } = shared;
   // Captured (ALLOWED) transactions are the disputable ones.
   const capturables = useMemo(() => ledger.filter((l) => l.type === 'ATTEMPT_ALLOWED'), [ledger]);
   const [pickedSeq, setPickedSeq] = useState<number | null>(null);
-  const [reason, setReason] = useState<string>(DISPUTE_REASONS[0]);
+  const [reason, setReason] = useState<string>(DISPUTE_REASONS[0].code);
   const [disputeOpened, setDisputeOpened] = useState(false);
   const [evidence, setEvidence] = useState<{ html: string; disputeId: string; sha256: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,7 +29,6 @@ export function PanelD({ shared }: { shared: SharedState }) {
   }, [capturables, pickedSeq]);
 
   const picked = capturables.find((c) => c.seq === pickedSeq) ?? null;
-  void picked;
 
   async function openDispute() {
     if (pickedSeq == null) return;
@@ -39,7 +38,9 @@ export function PanelD({ shared }: { shared: SharedState }) {
       await api.openDispute({ ledgerSeq: pickedSeq, reason });
       setDisputeOpened(true);
       setEvidence(null);
-      await refreshLedger();
+      await refreshLedger().catch(() => {
+        // the dispute itself succeeded; only the view refresh failed
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Dispute could not be opened');
     } finally {
@@ -54,7 +55,9 @@ export function PanelD({ shared }: { shared: SharedState }) {
     try {
       const pack = await api.generateEvidence({ ledgerSeq: pickedSeq });
       setEvidence(pack);
-      await refreshLedger();
+      await refreshLedger().catch(() => {
+        // the pack itself is already rendered; only the view refresh failed
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Evidence pack generation failed');
     } finally {
@@ -65,7 +68,6 @@ export function PanelD({ shared }: { shared: SharedState }) {
   return (
     <section className="panel panel-d" aria-label="Dispute desk">
       <header>
-        <span className="panel-key">D</span>
         <h2>Dispute Desk</h2>
         <span className="sub">contest with evidence</span>
       </header>
@@ -74,9 +76,9 @@ export function PanelD({ shared }: { shared: SharedState }) {
           <label>Captured transaction</label>
           <div className="tx-pick-list">
             {capturables.length === 0 && (
-              <div style={{ color: 'var(--tx-2)', fontSize: 11 }}>no captured transactions yet — allow one in Panel B</div>
+              <div style={{ color: 'var(--tx-2)', fontSize: 11 }}>no captured transactions yet — run one through the Agent Checkout view</div>
             )}
-            {capturables.slice(0, 5).map((c) => (
+            {capturables.map((c) => (
               <button type="button" key={c.seq} className={'tx-pick' + (c.seq === pickedSeq ? ' selected' : '')} onClick={() => { setPickedSeq(c.seq); setDisputeOpened(false); setEvidence(null); }}>
                 <span className="amt">#{c.seq}</span>
                 <span>{c.memo.split(' · ')[1] ?? c.memo}</span>
@@ -89,16 +91,25 @@ export function PanelD({ shared }: { shared: SharedState }) {
           <label htmlFor="pd-reason">Dispute reason</label>
           <select id="pd-reason" value={reason} onChange={(e) => setReason(e.target.value)}>
             {DISPUTE_REASONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
+              <option key={r.code} value={r.code}>
+                {r.label}
               </option>
             ))}
           </select>
         </div>
-        <div className="two-col">
-          {error && (
-            <p className="form-error" role="alert">✕ {error}</p>
-          )}
+        {error && (
+          <p className="form-error" role="alert">✕ {error}</p>
+        )}
+        {picked && (
+          <div className="picked-summary">
+            <span className="ps-lbl">DISPUTING</span>
+            <span className="ps-main">ledger #{picked.seq} · {formatINR(picked.amountPaise ?? '0')}</span>
+            <span className="ps-sub">
+              {picked.type} at {new Date(picked.ts).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })}
+            </span>
+          </div>
+        )}
+        <div className="actions-row">
           <button className="btn" disabled={busy || pickedSeq == null || disputeOpened} onClick={openDispute}>
             Open Dispute
           </button>

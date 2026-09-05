@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SharedState } from '../App';
 import { formatINR, formatIST, type FraudFlag, type FraudVerdict } from '../api';
 
@@ -9,8 +9,14 @@ export function PanelE({ shared }: { shared: SharedState }) {
   const [withArtifact, setWithArtifact] = useState(true);
   const [verdict, setVerdict] = useState<FraudVerdict | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const setBusySafe = (v: boolean) => {
+    busyRef.current = v;
+    setBusy(v);
+  };
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
@@ -20,6 +26,7 @@ export function PanelE({ shared }: { shared: SharedState }) {
         const f = await api.listFraudFlags();
         if (alive) {
           setLoadError(null);
+          setLoading(false);
           setFlags(f);
           setPickedFlag((p) => {
             const stillThere = p && f.some((x) => x.flagId === p);
@@ -28,11 +35,17 @@ export function PanelE({ shared }: { shared: SharedState }) {
           });
         }
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : 'flag feed unavailable — real mode needs the API up');
+        if (alive) {
+          setLoading(false);
+          setLoadError(err instanceof Error ? err.message : 'flag feed unavailable — real mode needs the API up');
+        }
       }
     };
     void load();
-    const t = setInterval(load, 6000);
+    const t = setInterval(() => {
+      if (document.hidden || busyRef.current) return; // never reorder mid-review
+      void load();
+    }, 6000);
     return () => {
       alive = false;
       clearInterval(t);
@@ -41,8 +54,9 @@ export function PanelE({ shared }: { shared: SharedState }) {
 
   async function runGate() {
     if (!pickedFlag) return;
-    setBusy(true);
+    setBusySafe(true);
     setError(null);
+    setVerdict(null); // no stale result while a new one is in flight
     try {
       const v = await api.runFraudGate({ flagId: pickedFlag, withArtifact });
       setVerdict(v);
@@ -50,26 +64,29 @@ export function PanelE({ shared }: { shared: SharedState }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fraud gate evaluation failed');
     } finally {
-      setBusy(false);
+      setBusySafe(false);
     }
   }
 
   return (
     <section className="panel panel-e" aria-label="Risk desk">
       <header>
-        <span className="panel-key">E</span>
         <h2>Risk Desk</h2>
         <span className="sub">fraud pass-through</span>
       </header>
       <div className="panel-body risk-body" aria-busy={busy}>
+        {loading && (
+          <p className="hint" role="status">loading flagged transactions…</p>
+        )}
         {loadError && (
           <p className="form-error" role="alert">✕ {loadError}</p>
         )}
-        {flags.length === 0 && !loadError && (
+        {flags.length === 0 && !loadError && !loading && (
           <div style={{ color: 'var(--tx-2)', fontSize: 11 }}>
             no flagged transactions in the feed — bot-like Razorpay test payments will appear here
           </div>
         )}
+        <div className="flag-feed">
         {flags.map((f) => (
           <button
             type="button"
@@ -83,9 +100,11 @@ export function PanelE({ shared }: { shared: SharedState }) {
               display: 'grid',
               borderColor: f.flagId === pickedFlag ? 'rgba(97,198,217,.5)' : undefined,
             }}
+            disabled={busy}
             onClick={() => {
               setPickedFlag(f.flagId);
               setVerdict(null);
+              setError(null);
             }}
           >
             <span className="f-head">
@@ -106,6 +125,7 @@ export function PanelE({ shared }: { shared: SharedState }) {
             </span>
           </button>
         ))}
+        </div>
         <div className="risk-controls">
           <label>
             <input

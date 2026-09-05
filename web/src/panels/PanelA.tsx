@@ -15,6 +15,7 @@ function JsonBlock({ obj }: { obj: unknown }) {
         let cls = 'tok-punc';
         if (/^"/.test(p)) cls = p.endsWith(':') ? 'tok-key' : 'tok-str';
         else if (/^-?\d/.test(p)) cls = 'tok-num';
+        else if (p === 'true' || p === 'false' || p === 'null') cls = 'tok-bool';
         return (
           <span key={i} className={cls}>
             {p}
@@ -31,7 +32,7 @@ const rupeesToPaise = (r: string): string => {
   return Number.isFinite(n) && n > 0 ? String(Math.round(n * 100)) : '';
 };
 
-export function PanelA({ shared }: { shared: SharedState }) {
+export function PanelA({ shared, onDone }: { shared: SharedState; onDone?: () => void }) {
   const { api, registerArtifact, refreshLedger } = shared;
   const [principalName, setPrincipalName] = useState('Rukmini Desai');
   const [principalEmail, setPrincipalEmail] = useState('rukmini@example.in');
@@ -78,27 +79,39 @@ export function PanelA({ shared }: { shared: SharedState }) {
   const aggPaise = rupeesToPaise(aggregate);
   const expiry = Number(expiryMin);
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(principalEmail);
+  const perLt = BigInt(perPaise || '0');
+  const aggLt = BigInt(aggPaise || '0');
+  const perExceedsAgg = !!perPaise && !!aggPaise && perLt > aggLt;
   const canIssue =
-    !busy && categories.length > 0 && !!principalName && emailOk && !!perPaise && !!aggPaise && Number.isFinite(expiry) && expiry >= 1;
+    !busy &&
+    categories.length > 0 &&
+    !!principalName &&
+    emailOk &&
+    !!perPaise &&
+    !!aggPaise &&
+    !perExceedsAgg &&
+    Number.isFinite(expiry) &&
+    expiry >= 1;
   const whyDisabled =
     categories.length === 0
       ? 'select at least one category'
       : !perPaise || !aggPaise
         ? 'caps must be positive amounts'
-        : !principalName
-          ? 'principal name required'
-          : !emailOk
-            ? 'principal email required (name@domain)'
-            : !Number.isFinite(expiry) || expiry < 1
-              ? 'expiry must be at least 1 minute'
-              : null;
+        : perExceedsAgg
+          ? 'per-txn cap cannot exceed the aggregate cap'
+          : !principalName
+            ? 'principal name required'
+            : !emailOk
+              ? 'principal email required (name@domain)'
+              : !Number.isFinite(expiry) || expiry < 1
+                ? 'expiry must be at least 1 minute'
+                : null;
 
   return (
     <section className="panel panel-a" aria-label="Merchant desk">
       <header>
-        <span className="panel-key">A</span>
-        <h2>Merchant Desk</h2>
-        <span className="sub">issue delegation</span>
+        <h2>Issue a delegation</h2>
+        <span className="sub">bound what your agent may spend — scope, caps, expiry</span>
       </header>
       <div className="merchant-strip">
         <span className="m-name">Kadai &amp; Co.</span>
@@ -106,16 +119,6 @@ export function PanelA({ shared }: { shared: SharedState }) {
       </div>
       <div className="panel-body">
         <form className="issue-form" onSubmit={issue} noValidate>
-          {error && (
-            <p className="form-error" role="alert">
-              ✕ {error}
-            </p>
-          )}
-          {ok && (
-            <p className="form-ok" role="status">
-              ✓ {ok}
-            </p>
-          )}
           <div className="field">
             <label htmlFor="pa-principal">Principal (human)</label>
             <input
@@ -171,7 +174,7 @@ export function PanelA({ shared }: { shared: SharedState }) {
                 id="pa-per"
                 type="number"
                 min="1"
-                step="1"
+                step="0.01"
                 inputMode="decimal"
                 required
                 value={perTxn}
@@ -185,7 +188,7 @@ export function PanelA({ shared }: { shared: SharedState }) {
                 id="pa-agg"
                 type="number"
                 min="1"
-                step="1"
+                step="0.01"
                 inputMode="decimal"
                 required
                 value={aggregate}
@@ -206,12 +209,24 @@ export function PanelA({ shared }: { shared: SharedState }) {
               onChange={(e) => setExpiryMin(e.target.value)}
             />
           </div>
-          <button className="btn primary block" type="submit" disabled={!canIssue} title={whyDisabled ?? undefined}>
-            {busy ? 'Signing…' : 'Issue Delegation →'}
-          </button>
+          <div className="submit-wrap" title={whyDisabled ?? undefined}>
+            <button className="btn primary block" type="submit" disabled={!canIssue}>
+              {busy ? 'Signing…' : 'Issue Delegation →'}
+            </button>
+          </div>
           {!canIssue && whyDisabled && (
             <p className="hint disabled-why" aria-live="polite">
               {whyDisabled}
+            </p>
+          )}
+          {error && (
+            <p className="form-error" role="alert">
+              ✕ {error}
+            </p>
+          )}
+          {ok && (
+            <p className="form-ok" role="status">
+              ✓ {ok}
             </p>
           )}
           {artifact && (
@@ -234,6 +249,11 @@ export function PanelA({ shared }: { shared: SharedState }) {
                 <span>valid until</span>
                 <span className="sig">{formatIST(artifact.scope.expiresAt)}</span>
               </div>
+              {onDone && (
+                <button type="button" className="btn primary block continue-btn" onClick={onDone}>
+                  Continue to Agent Checkout →
+                </button>
+              )}
             </div>
           )}
         </form>

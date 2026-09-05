@@ -147,6 +147,17 @@ export function PanelB({ shared }: { shared: SharedState }) {
         </div>
       </div>
       <div className="cart-summary">
+        {cartLines.length > 0 && (
+          <ul className="cart-lines">
+            {cartLines.map((l) => (
+              <li key={l.sku}>
+                <span className="cl-name">{l.product.name}</span>
+                <span className="cl-qty">× {l.qty}</span>
+                <span className="cl-amt">{formatINR((BigInt(l.product.unitPaise) * BigInt(l.qty)).toString())}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="cart-total-row">
           <span className="lbl">CART TOTAL · {cartLines.reduce((s, l) => s + l.qty, 0)} ITEMS</span>
           <span className="amt">{formatINR(totalPaise.toString())}</span>

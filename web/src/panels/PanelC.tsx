@@ -59,12 +59,13 @@ export function PanelC({ shared }: { shared: SharedState }) {
   return (
     <section className="panel panel-c" aria-label="Ledger">
       <header>
-        <span className="panel-key">C</span>
-        <h2>The Ledger</h2>
-        <span className="sub">hash-chained · append-only · every money action</span>
-        <span className="spacer" />
+        <div className="hdr-line">
+          <h2>The Ledger</h2>
+          <span className="sub">hash-chained · append-only · every money action</span>
+        </div>
+        <div className="hdr-actions">
         {verification && (
-          <span className={'chain-status ' + (verification.valid ? 'ok' : 'pending')}>
+          <span className={'chain-status ' + (verification === null ? 'unknown' : verification.valid ? 'ok' : 'broken')}>
             {verification.valid
               ? `CHAIN VERIFIED · ${verification.checkedEntries} ENTRIES`
               : `BROKEN AT #${verification.brokenAtSeq}`}
@@ -78,6 +79,7 @@ export function PanelC({ shared }: { shared: SharedState }) {
         <button className="btn quiet verify" onClick={verify} disabled={busy}>
           {busy ? 'RECOMPUTING…' : 'VERIFY CHAIN'}
         </button>
+        </div>
       </header>
       {error && (
         <p className="form-error" role="alert" style={{ margin: '8px 14px' }}>✕ {error}</p>
@@ -147,7 +149,7 @@ export function PanelC({ shared }: { shared: SharedState }) {
 function LedgerRow({ entry: e }: { entry: LedgerEntry }) {
   const [hashOpen, setHashOpen] = useState(false);
   const ts = new Date(e.ts);
-  const hhmmss = ts.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+  const hhmmss = ts.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   return (
     <tr className="ledger-row">
       <td className="seq">{String(e.seq).padStart(3, '0')}</td>
