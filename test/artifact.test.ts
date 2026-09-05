@@ -81,11 +81,20 @@ describe('verifyArtifact', () => {
   });
 
   it('expired artifact → { ok: false, reason: ARTIFACT_EXPIRED }', () => {
+    // Time-relative so this test can never rot: mint a short-window artifact,
+    // then verify at a `now` that is strictly past its expiry.
+    const issuedAt = new Date();
+    const expiresAt = new Date(issuedAt.getTime() + 60_000); // +1 minute
+    const later = new Date(issuedAt.getTime() + 120_000).toISOString(); // +2 minutes
     const { artifact, sig } = issueDelegation(
-      { merchantId: 'm1', agentId: 'a1', principal: 'u', scope: { ...VALID_SCOPE, expiresAt: '2026-09-05T00:00:00.000Z' } },
+      {
+        merchantId: 'm1',
+        agentId: 'a1',
+        principal: 'u',
+        scope: { ...VALID_SCOPE, expiresAt: expiresAt.toISOString() },
+      },
       signer,
     );
-    const later = '2026-09-06T00:00:00.000Z';
     const res = verifyArtifact(artifactToWire(artifact), sig, signer.publicKey, later);
     expect(res).toEqual({ ok: false, reason: 'ARTIFACT_EXPIRED' });
   });
