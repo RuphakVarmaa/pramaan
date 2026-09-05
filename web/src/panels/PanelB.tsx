@@ -13,6 +13,32 @@ interface Product {
 const products = catalog.products as Product[];
 const categories = catalog.merchant.categories as string[];
 
+/** Console artifact → backend wire form (string paise, backend field names). */
+function toWire(a: {
+  artifactId: string;
+  merchant: { id: string };
+  scope: { categories: string[]; perTxnCapPaise: string; aggregateCapPaise: string; expiresAt: string };
+  principal: { name: string; email: string };
+  agent: { id: string };
+  issuedAt: string;
+}): Record<string, unknown> {
+  return {
+    version: 1,
+    artifactId: a.artifactId,
+    merchantId: a.merchant.id,
+    agentId: a.agent.id,
+    principal: `${a.principal.name} <${a.principal.email}>`,
+    scope: {
+      categories: a.scope.categories,
+      maxPerTxnPaise: a.scope.perTxnCapPaise,
+      maxAggregatePaise: a.scope.aggregateCapPaise,
+      expiresAt: a.scope.expiresAt,
+    },
+    issuedAt: a.issuedAt,
+    nonce: 'console-presented',
+  };
+}
+
 const REASON_PROSE: Record<string, string> = {
   CAP_EXCEEDED_PER_TXN: 'The basket exceeds the artifact’s per-transaction cap. The agent stays inside its mandate; the money does not.',
   CAP_EXCEEDED_AGGREGATE: 'The aggregate cap for this delegation is exhausted. No further spending is authorized.',
@@ -70,6 +96,9 @@ export function PanelB({ shared }: { shared: SharedState }) {
     try {
       const v = await api.attemptPayment({
         artifactId: effectiveId,
+        // the agent presents its mandate — not a session token, the proof itself
+        artifactWire: toWire(selected),
+        sig: selected.signature,
         cart: cartLines.map(({ sku, qty }) => ({ sku, qty })),
       });
       setVerdict(v);

@@ -219,10 +219,18 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
 
   // ---- POST /api/gate — attempt payment, console shape ----
   app.post('/api/gate', async (req, reply) => {
-    const b = req.body as { artifactId?: string; cart?: Array<{ sku: string; qty: number }> };
-    const stored = b?.artifactId ? loadArtifact(b.artifactId) : undefined;
+    const b = req.body as {
+      artifactId?: string;
+      cart?: Array<{ sku: string; qty: number }>;
+      // protocol-correct: the agent PRESENTS its mandate (wire + sig).
+      // Server-side lookup is a fallback, not the source of truth.
+      artifactWire?: DelegationArtifactWire;
+      sig?: string;
+    };
+    const presented = b?.artifactWire && b?.sig ? { wire: b.artifactWire, sig: b.sig } : undefined;
+    const stored = presented ?? (b?.artifactId ? loadArtifact(b.artifactId) : undefined);
     if (!stored || !b?.cart?.length) {
-      return reply.code(400).send({ error: 'invalid_request', reason: 'unknown artifactId or empty cart' });
+      return reply.code(400).send({ error: 'invalid_request', reason: 'no presented artifact, unknown artifactId, or empty cart' });
     }
 
     // resolve catalog lines (server-side catalog is authoritative)
@@ -363,7 +371,7 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
 
   // ---- POST /api/fraud/gate — pass-through, console shape ----
   app.post('/api/fraud/gate', async (req, reply) => {
-    const b = req.body as { flagId?: string; withArtifact?: boolean };
+    const b = req.body as { flagId?: string; withArtifact?: boolean; artifactWire?: DelegationArtifactWire; sig?: string };
     const rows = readLedger(db).filter((r) => r.type === 'PAYMENT_CAPTURED');
     const m = b?.flagId?.match(/^flag_(\d+)_/);
     const seq = m ? Number(m[1]) : null;
@@ -375,8 +383,12 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
     const signals = { velocityPerMin: 9, headless: true, accountAgeDays: 400 };
     const risk = evaluateRisk(signals); // flagged by design
 
-    if (b?.withArtifact && target.artifactId) {
-      const stored = loadArtifact(target.artifactId);
+    const presentedFraud = (b as { artifactWire?: DelegationArtifactWire; sig?: string }).artifactWire &&
+      (b as { sig?: string }).sig
+      ? { wire: (b as { artifactWire: DelegationArtifactWire }).artifactWire, sig: (b as { sig: string }).sig }
+      : undefined;
+    if (presentedFraud || (b?.withArtifact && target.artifactId)) {
+      const stored = presentedFraud ?? loadArtifact(target.artifactId!);
       if (stored) {
         const verdict = await pramaanFraudGate(
           {

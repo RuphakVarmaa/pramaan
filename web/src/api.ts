@@ -69,6 +69,9 @@ export interface CartLine {
 export interface GateRequest {
   artifactId: string;
   cart: CartLine[];
+  /** protocol-correct: the agent presents its signed mandate with the attempt */
+  artifactWire?: unknown;
+  sig?: string;
 }
 
 export interface GateVerdict {
