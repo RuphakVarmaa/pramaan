@@ -201,6 +201,10 @@ export function registerConsoleRoutes(app: FastifyInstance, deps: AppDeps, db: D
 
     const persona = AGENT_PERSONAS[b.agentId] ?? AGENT_PERSONAS.default!;
     return {
+      // the EXACT wire form that was signed — the client re-presents these
+      // bytes with every attempt so the signature always verifies (§1.2)
+      wire: wire,
+      sig: issued.sig,
       artifactId: issued.artifact.artifactId,
       version: 1 as const,
       merchant: { id: merchant.id, name: merchant.name },

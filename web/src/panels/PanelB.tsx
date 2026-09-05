@@ -96,9 +96,8 @@ export function PanelB({ shared }: { shared: SharedState }) {
     try {
       const v = await api.attemptPayment({
         artifactId: effectiveId,
-        // the agent presents its mandate — not a session token, the proof itself
-        artifactWire: toWire(selected),
-        sig: selected.signature,
+        // the agent presents its mandate — the EXACT signed bytes from issuance
+        ...(selected.wire ? { artifactWire: selected.wire, sig: selected.signature } : { artifactWire: toWire(selected) }),
         cart: cartLines.map(({ sku, qty }) => ({ sku, qty })),
       });
       setVerdict(v);

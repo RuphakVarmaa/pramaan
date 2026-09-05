@@ -48,6 +48,8 @@ export interface LedgerEntry {
 export interface DelegationArtifact {
   artifactId: string;
   version: 1;
+  /** the exact backend wire form that was signed — re-presented on attempts */
+  wire?: Record<string, unknown>;
   merchant: { id: string; name: string };
   principal: { name: string; email: string };
   agent: { id: string; persona: string; model: string };
@@ -267,6 +269,21 @@ function makeMockApi(): PramaanApi {
         },
         issuedAt,
         signature: 'ed25519:' + fakeHash(JSON.stringify({ artifactId, issuedAt, agent: input.agentId }), 0xed25519),
+        wire: {
+          version: 1,
+          artifactId,
+          merchantId: merchant.id,
+          agentId: input.agentId,
+          principal: `${input.principalName} <${input.principalEmail}>`,
+          scope: {
+            categories: [...input.categories].sort(),
+            maxPerTxnPaise: input.perTxnCapPaise,
+            maxAggregatePaise: input.aggregateCapPaise,
+            expiresAt: new Date(Date.now() + input.expiryMinutes * 60_000).toISOString(),
+          },
+          issuedAt,
+          nonce: 'console-' + artifactId,
+        },
       };
       artifacts.set(artifactId, artifact);
       aggregateSpent.set(artifactId, 0n);
